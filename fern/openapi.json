@@ -3,7 +3,11 @@
   "info": {
     "title": "ClawOps API",
     "version": "1.3.0",
-    "description": "ClawOps CPaaS API — Voice & Messaging. Authorization 헤더에 Bearer <api_key> 형식으로 인증합니다."
+    "description": "ClawOps CPaaS API — Voice & Messaging. Authorization 헤더에 Bearer <api_key> 형식으로 인증합니다.",
+    "license": {
+      "name": "ClawOps API Terms of Service",
+      "url": "https://claw-ops.com/terms"
+    }
   },
   "servers": [
     {
@@ -3025,7 +3029,7 @@
               ]
             },
             "description": "상태 필터",
-            "example": "completed"
+            "example": "sent"
           },
           {
             "name": "pageSize",
@@ -3175,7 +3179,7 @@
               "minimum": 0
             },
             "description": "미디어 인덱스 (0부터)",
-            "example": "0"
+            "example": 0
           }
         ],
         "responses": {
@@ -3845,7 +3849,7 @@
               ]
             },
             "description": "링크 상태로 필터링",
-            "example": "completed"
+            "example": "pending"
           },
           {
             "name": "pageSize",
@@ -5893,7 +5897,7 @@
               ]
             },
             "description": "필터 (지정 안 하면 deleted 제외 전체)",
-            "example": "completed"
+            "example": "active"
           }
         ],
         "responses": {
@@ -6688,7 +6692,7 @@
                 "disabled"
               ]
             },
-            "example": "completed"
+            "example": "active"
           }
         ],
         "responses": {
@@ -6698,6 +6702,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SipIpAclListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 페이지 또는 상태 필터",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -7084,7 +7108,7 @@
                 "disabled"
               ]
             },
-            "example": "completed"
+            "example": "active"
           }
         ],
         "responses": {
@@ -7094,6 +7118,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SipCredentialListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 페이지 또는 상태 필터",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -7514,6 +7558,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/IceServersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ttl_seconds 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
