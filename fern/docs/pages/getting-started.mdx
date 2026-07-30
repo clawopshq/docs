@@ -1,0 +1,62 @@
+---
+title: Quickstart
+description: 번호를 발급하고 첫 번째 AI 음성 에이전트를 실행합니다.
+slug: getting-started
+---
+
+# Quickstart
+
+이 가이드에서는 ClawOps 번호를 발급하고, OpenAI Realtime 기반 에이전트로 전화를 받는 데까지 진행합니다.
+
+<Steps>
+  <Step title="번호와 API 키 준비">
+    [ClawOps 대시보드](https://platform.claw-ops.com)에서 070 번호를 발급한 뒤 **설정 → API 키**에서 API Key와 Account ID를 확인합니다.
+  </Step>
+  <Step title="SDK 설치">
+
+```bash
+pip install "clawops[agent,openai]"
+```
+
+  </Step>
+  <Step title="환경변수 설정">
+
+```bash
+export CLAWOPS_API_KEY="your-api-key"
+export CLAWOPS_ACCOUNT_ID="your-account-id"
+export OPENAI_API_KEY="your-openai-key"
+```
+
+  </Step>
+  <Step title="에이전트 실행">
+
+```python
+import asyncio
+from clawops.agent import ClawOpsAgent, OpenAIRealtime
+
+agent = ClawOpsAgent(
+    from_="07012341234",
+    session=OpenAIRealtime(
+        system_prompt="친절한 고객 상담원입니다. 한국어로 응대합니다.",
+        voice="marin",
+        language="ko",
+    ),
+)
+
+asyncio.run(agent.serve())
+```
+
+  </Step>
+</Steps>
+
+실행 후 발급받은 번호로 전화를 걸면 에이전트가 전화를 받습니다.
+
+<Tip>
+  에이전트가 ClawOps 서버에 직접 연결하므로 인바운드 수신을 위해 ngrok 같은 터널을 열 필요가 없습니다.
+</Tip>
+
+## 다음 단계
+
+- [Voice Agent](/voice-agent)에서 도구 호출, 이벤트 처리와 아웃바운드 발신을 알아보세요.
+- [VoiceML](/voiceml)에서 서버가 통화 흐름을 직접 제어하는 방식을 알아보세요.
+- [API Reference](/api-reference)에서 REST API 인증과 전체 엔드포인트를 확인하세요.

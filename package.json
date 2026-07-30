@@ -1,0 +1,13 @@
+{
+  "name": "clawops-docs",
+  "private": true,
+  "scripts": {
+    "check": "fern check",
+    "dev": "fern docs dev",
+    "preview": "fern generate --docs --preview",
+    "publish": "fern generate --docs"
+  },
+  "devDependencies": {
+    "fern-api": "5.35.4"
+  }
+}
