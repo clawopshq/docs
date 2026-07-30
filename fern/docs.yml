@@ -25,9 +25,11 @@ tabs:
 navigation:
   - tab: documentation
     layout:
-      - page: Overview
-        path: docs/pages/welcome.mdx
-        icon: house
+      - section: 시작하기
+        contents:
+          - page: 환영합니다
+            path: docs/pages/welcome.mdx
+            icon: house
   - tab: integrations
     layout:
       - page: Overview
