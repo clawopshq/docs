@@ -6,9 +6,16 @@ on:
     branches:
       - main
 
+concurrency:
+  group: fern-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

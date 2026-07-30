@@ -1,14 +1,21 @@
 name: publish-docs
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
 
+concurrency:
+  group: fern-production
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && contains(github.ref, 'refs/heads/main') && github.run_number > 1 }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -21,7 +28,16 @@ jobs:
       - name: Setup Fern CLI
         uses: fern-api/setup-fern-cli@v1
 
+      - name: Verify Fern credentials
+        env:
+          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
+        run: |
+          if [ -z "$FERN_TOKEN" ]; then
+            echo "::error::FERN_TOKEN repository secret is required"
+            exit 1
+          fi
+
       - name: Publish Docs
         env:
           FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
-        run: fern generate --docs --log-level debug
+        run: fern generate --docs --no-prompt
