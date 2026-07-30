@@ -22,6 +22,70 @@
 
   const ignoredParents = new Set(["CODE", "PRE", "SCRIPT", "STYLE", "TEXTAREA"]);
   let scheduled = false;
+  let activePreview = null;
+
+  function setPreviewButtonState(button, playing) {
+    button.classList.toggle("is-playing", playing);
+    const voiceName = button.dataset.voiceName || "음성";
+    const action = playing ? "정지" : "재생";
+    button.setAttribute("aria-label", `${voiceName} 미리듣기 ${action}`);
+    button.title = `미리듣기 ${action}`;
+  }
+
+  function stopActivePreview(exceptAudio = null) {
+    if (!activePreview || activePreview.audio === exceptAudio) return;
+    activePreview.audio.pause();
+    activePreview.audio.currentTime = 0;
+    setPreviewButtonState(activePreview.button, false);
+    activePreview = null;
+  }
+
+  function enhanceVoicePreviews(root = document) {
+    root
+      .querySelectorAll("audio.clawops-voice-preview:not([data-preview-enhanced])")
+      .forEach((audio) => {
+        audio.dataset.previewEnhanced = "true";
+
+        const button = document.createElement("button");
+        const voiceName =
+          audio.closest("tr")?.querySelector("td")?.textContent?.trim() || "음성";
+        button.type = "button";
+        button.className = "clawops-voice-preview-button";
+        button.dataset.voiceName = voiceName;
+        button.innerHTML =
+          '<span class="clawops-voice-preview-icon" aria-hidden="true"></span>';
+        setPreviewButtonState(button, false);
+
+        button.addEventListener("click", async () => {
+          if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+            setPreviewButtonState(button, false);
+            if (activePreview?.audio === audio) activePreview = null;
+            return;
+          }
+
+          stopActivePreview(audio);
+          try {
+            await audio.play();
+            activePreview = { audio, button };
+            setPreviewButtonState(button, true);
+          } catch {
+            button.classList.add("has-error");
+            button.setAttribute("aria-label", `${voiceName} 미리듣기를 재생하지 못했습니다`);
+            button.title = "미리듣기를 재생하지 못했습니다";
+          }
+        });
+
+        audio.addEventListener("ended", () => {
+          audio.currentTime = 0;
+          setPreviewButtonState(button, false);
+          if (activePreview?.audio === audio) activePreview = null;
+        });
+        audio.addEventListener("error", () => button.classList.add("has-error"));
+        audio.insertAdjacentElement("afterend", button);
+      });
+  }
 
   function translateTextNode(node) {
     const parent = node.parentElement;
@@ -46,6 +110,7 @@
       translateTextNode(node);
       node = walker.nextNode();
     }
+    enhanceVoicePreviews(root);
   }
 
   function scheduleTranslation() {

@@ -5,3 +5,85 @@
 :root.dark .fern-background-image {
   background-image: radial-gradient(circle at 15% 0%, rgba(250, 250, 249, 0.04), transparent 34%);
 }
+
+audio.clawops-voice-preview {
+  display: none;
+}
+
+.clawops-voice-preview-button {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(23, 23, 23, 0.16);
+  border-radius: 9999px;
+  background: rgba(23, 23, 23, 0.04);
+  color: currentColor;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.clawops-voice-preview-button:hover {
+  border-color: rgba(23, 23, 23, 0.35);
+  background: rgba(23, 23, 23, 0.09);
+}
+
+.clawops-voice-preview-button:active {
+  transform: scale(0.95);
+}
+
+.clawops-voice-preview-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.clawops-voice-preview-button.is-playing {
+  background: rgba(23, 23, 23, 0.9);
+  color: white;
+}
+
+.clawops-voice-preview-button.has-error {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.clawops-voice-preview-icon {
+  width: 0;
+  height: 0;
+  margin-left: 2px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+}
+
+.clawops-voice-preview-button.is-playing .clawops-voice-preview-icon {
+  width: 9px;
+  height: 11px;
+  margin-left: 0;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    currentColor 0 33%,
+    transparent 33% 67%,
+    currentColor 67% 100%
+  );
+}
+
+:root.dark .clawops-voice-preview-button {
+  border-color: rgba(250, 250, 249, 0.2);
+  background: rgba(250, 250, 249, 0.06);
+}
+
+:root.dark .clawops-voice-preview-button:hover {
+  border-color: rgba(250, 250, 249, 0.4);
+  background: rgba(250, 250, 249, 0.12);
+}
+
+:root.dark .clawops-voice-preview-button.is-playing {
+  background: rgba(250, 250, 249, 0.92);
+  color: rgb(23, 23, 23);
+}

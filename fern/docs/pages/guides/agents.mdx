@@ -1,0 +1,494 @@
+---
+title: 에이전트
+description: STT·LLM·TTS를 조합해 한국 전화번호에 연결할 AI 음성 에이전트를 생성하고 관리합니다.
+slug: agents
+---
+
+에이전트는 전화를 받고 실시간으로 대화하는 AI 음성 상담원입니다. 간단하게 이름만 입력해 시작하거나, 모델 내장 음성부터 STT·LLM·TTS 파이프라인까지 통화 처리 방식을 직접 구성할 수 있습니다.
+
+## 빠르게 생성하기
+
+새 에이전트를 만들 때 필요한 필드는 `name` 하나뿐입니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "지원 에이전트"}'
+```
+
+생략된 필드에는 다음 기본값이 적용됩니다.
+
+| 항목 | 기본값 |
+| --- | --- |
+| 역할 지침 | 범용 한국어 음성 에이전트 프롬프트 |
+| 먼저 인사하기 | `true` |
+| 출력 방식 | `external_tts` |
+| LLM | OpenAI Realtime `gpt-realtime-2.1-mini` |
+| TTS | Cartesia `sonic-3.5` |
+| 음성 | Minji - Modern Communicator |
+| 언어 | `ko` |
+| 지식 검색 | 사용 안 함 |
+
+응답의 `agentId`는 에이전트를 조회·수정하거나 전화번호에 연결할 때 사용합니다. 기본 생성으로 먼저 통화를 확인한 뒤 필요한 경우 아래의 상세 구성을 적용하세요.
+
+## 음성 처리 방식 선택
+
+ClawOps 에이전트는 세 가지 출력 방식을 지원합니다.
+
+| `outputMode` | 처리 구조 | 언제 사용하나요? |
+| --- | --- | --- |
+| `realtime_voice` | OpenAI Realtime 모델이 음성을 직접 인식하고 생성 | 가장 낮은 지연이 중요할 때 |
+| `external_tts` | OpenAI Realtime → 외부 TTS | Realtime 대화에 Cartesia 또는 xAI 음성을 사용할 때 |
+| `pipeline` | OpenAI STT → OpenAI LLM → 외부 TTS | STT·LLM·VAD와 끼어들기를 각각 조정할 때 |
+
+<Tip>
+어떤 방식을 선택할지 확실하지 않다면 기본값인 `external_tts`를 유지하세요.
+</Tip>
+
+## 생성 요청
+
+```text
+POST /v1/accounts/{accountId}/agents
+```
+
+### 공통 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `name` | string | **필수.** 에이전트 이름입니다. 최대 80자입니다. |
+| `instructions` | string | 역할, 말투와 업무 규칙을 지정하는 시스템 프롬프트입니다. 최대 16,000자입니다. |
+| `greeting` | boolean | 통화 연결 직후 에이전트가 먼저 인사할지 지정합니다. 기본값은 `true`입니다. |
+| `model` | string | 기본 Realtime 구성을 위한 단축 필드입니다. |
+| `voice` | UUID | 기본 Cartesia 구성을 위한 음성 단축 필드입니다. |
+| `configuration` | object | STT·LLM·TTS·VAD와 세션 옵션을 포함하는 전체 실행 설정입니다. |
+
+`configuration`을 사용하면 `model`과 `voice` 단축 필드는 함께 보낼 수 없습니다.
+
+## 모델 내장 음성
+
+OpenAI Realtime 모델이 음성 인식과 음성 생성을 함께 처리합니다. 별도의 STT와 TTS가 없으므로 구성이 간단합니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "예약 안내 에이전트",
+    "instructions": "예약 가능 시간을 확인하고 간결하게 안내하세요.",
+    "configuration": {
+      "outputMode": "realtime_voice",
+      "llm": {
+        "provider": "openai-realtime",
+        "model": "gpt-realtime-2.1",
+        "voice": "marin"
+      }
+    }
+  }'
+```
+
+### Realtime 모델
+
+| 값 | 용도 |
+| --- | --- |
+| `gpt-realtime-2.1-mini` | 낮은 지연과 비용을 우선하는 일반적인 통화 |
+| `gpt-realtime-2.1` | 더 높은 품질이 필요한 복잡한 대화 |
+
+### OpenAI 내장 음성
+
+`marin`, `cedar`, `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`, `shimmer`, `verse`를 사용할 수 있습니다.
+
+## Realtime과 외부 TTS
+
+OpenAI Realtime 모델이 대화를 처리하고 외부 TTS가 최종 음성을 생성합니다. 기본 생성 방식이며, Cartesia 한국어 음성이나 xAI 음성을 사용할 수 있습니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "고객 지원 에이전트",
+    "instructions": "고객의 문제를 확인하고 해결 절차를 정중하게 안내하세요.",
+    "configuration": {
+      "outputMode": "external_tts",
+      "llm": {
+        "provider": "openai-realtime",
+        "model": "gpt-realtime-2.1-mini"
+      },
+      "tts": {
+        "provider": "cartesia",
+        "model": "sonic-3.5",
+        "voice": "7706804e-ea85-443a-968a-b9bf363bdde8",
+        "speed": 1.0,
+        "volume": 1.0
+      }
+    }
+  }'
+```
+
+### TTS 제공자
+
+| 제공자 | 모델 | 음성 값 | 추가 설정 |
+| --- | --- | --- | --- |
+| `cartesia` | `sonic-3.5` | Cartesia voice UUID | `speed`, `volume` |
+| `xai` | `tts-1` | xAI voice ID | 별도 튜닝 필드 없음 |
+
+### Cartesia 음성 튜닝
+
+| 필드 | 타입 | 범위 | 설명 |
+| --- | --- | --- | --- |
+| `speed` | number | `0.6`–`1.5` | 말 속도입니다. `1.0`이 기본 속도입니다. |
+| `volume` | number | `0.5`–`1.5` | 음량입니다. `1.0`이 기본 음량입니다. |
+| `language` | string | — | 생략하면 에이전트 언어를 사용합니다. 기본값은 `ko`입니다. |
+
+`sonic-3.5`에서 `speed`는 문자열 프리셋이 아닌 숫자로 입력해야 합니다.
+
+## 에이전트 음성 조회
+
+에이전트의 TTS 설정에 사용할 수 있는 음성을 조회합니다.
+
+```text
+GET /v1/accounts/{accountId}/agents/voices
+```
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/voices" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+응답의 `data[].id`를 `configuration.tts.voice` 또는 `voice`에 사용합니다. `isCustom`이 `true`이면 현재 계정에서 등록한 음성입니다. 다른 계정에서 복제한 음성은 사용할 수 없습니다.
+
+### Cartesia
+
+ClawOps 기본 한국어 음성과 현재 계정에서 복제해 등록한 음성을 제공합니다. 아래 재생 버튼을 누르면 웹의 음성 선택 화면과 같은 기본 음성 샘플을 들어볼 수 있습니다.
+
+| 이름 | Voice ID | 미리듣기 |
+| --- | --- | --- |
+| Haeun - Polished Presence | `4dd4630e-19e0-4243-bca0-676ff85119b7` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/4dd4630e-19e0-4243-bca0-676ff85119b7.mp3" /> |
+| Taehyun - Friendly Host | `e1717dc3-b87b-4720-aa7f-b6db290e0609` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/e1717dc3-b87b-4720-aa7f-b6db290e0609.mp3" /> |
+| Jaewon - Steady Advisor | `89f4372f-1f73-4b85-8e1e-5d24ed8bc826` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/89f4372f-1f73-4b85-8e1e-5d24ed8bc826.mp3" /> |
+| Jihyun - Anchorwoman | `304fdbd8-65e6-40d6-ab78-f9d18b9efdf9` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/304fdbd8-65e6-40d6-ab78-f9d18b9efdf9.mp3" /> |
+| Seoyun - Warm Guide | `ce9ca2b6-2bed-4452-99bb-052e1ec0b534` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/ce9ca2b6-2bed-4452-99bb-052e1ec0b534.mp3" /> |
+| Subin - Elegant Speaker | `a0fc16d3-01af-482b-910f-ed063c3d79d3` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/a0fc16d3-01af-482b-910f-ed063c3d79d3.mp3" /> |
+| Minji - Modern Communicator | `7706804e-ea85-443a-968a-b9bf363bdde8` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/7706804e-ea85-443a-968a-b9bf363bdde8.mp3" /> |
+| Soyeon - Bright Companion | `69c18e1d-fab0-4747-b9da-58617cd8b9e4` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/69c18e1d-fab0-4747-b9da-58617cd8b9e4.mp3" /> |
+| Hyerin - Graceful Host | `90dba946-774b-40ed-98d9-ac3835117827` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/90dba946-774b-40ed-98d9-ac3835117827.mp3" /> |
+| Jiwoo - Service Specialist | `15628352-2ede-4f1b-89e6-ceda0c983fbc` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/15628352-2ede-4f1b-89e6-ceda0c983fbc.mp3" /> |
+| Minho - Friendly Spirit | `537a82ae-4926-4bfb-9aec-aff0b80a12a5` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/537a82ae-4926-4bfb-9aec-aff0b80a12a5.mp3" /> |
+| Ryeowook - Easygoing Pal | `f7755efb-1848-4321-aa22-5e5be5d32486` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/f7755efb-1848-4321-aa22-5e5be5d32486.mp3" /> |
+| Soojin - Helpful Tone | `cd6c48a9-774b-4397-98b4-9948c0a790f0` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/cd6c48a9-774b-4397-98b4-9948c0a790f0.mp3" /> |
+| Yuna - Kind Unnie | `cac92886-4b7c-4bc1-a524-e0f79c0381be` | <audio className="clawops-voice-preview" preload="none" src="../../assets/voice-previews/cartesia/cac92886-4b7c-4bc1-a524-e0f79c0381be.mp3" /> |
+
+<Note>
+  계정에서 복제한 커스텀 음성의 샘플은 인증된 사용자만 접근할 수 있습니다. 커스텀 음성은 ClawOps 대시보드의 에이전트 음성 선택 화면에서 미리듣습니다.
+</Note>
+
+## STT·LLM·TTS 파이프라인
+
+음성 인식, 대화 모델과 음성 합성을 각각 선택합니다. 발화 감지와 끼어들기 동작까지 조정해야 하는 고급 구성에 적합합니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "전문 상담 에이전트",
+    "instructions": "상품명과 고객 이름을 정확하게 확인하며 상담하세요.",
+    "configuration": {
+      "outputMode": "pipeline",
+      "language": "ko",
+      "stt": {
+        "provider": "openai",
+        "model": "gpt-4o-transcribe",
+        "prompt": "ClawOps, VoiceML",
+        "noise_reduction_type": "far_field",
+        "use_realtime": true
+      },
+      "llm": {
+        "provider": "openai",
+        "model": "gpt-5.6-terra",
+        "verbosity": "low",
+        "max_completion_tokens": 300
+      },
+      "tts": {
+        "provider": "cartesia",
+        "model": "sonic-3.5",
+        "voice": "7706804e-ea85-443a-968a-b9bf363bdde8",
+        "speed": 1.05
+      },
+      "vad": {
+        "provider": "silero",
+        "min_silence_duration": 0.55,
+        "activation_threshold": 0.5
+      },
+      "session": {
+        "turn_detection": "vad",
+        "allow_interruptions": true,
+        "min_endpointing_delay": 0.3
+      }
+    }
+  }'
+```
+
+### STT 설정
+
+현재 파이프라인 STT 제공자는 `openai`입니다.
+
+| 필드 | 타입 | 값·범위 | 설명 |
+| --- | --- | --- | --- |
+| `model` | string | `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1` | 음성 인식 모델 |
+| `language` | string | 기본 `ko` | 인식 언어 |
+| `prompt` | string | 선택 | 이름, 상품명과 같은 인식 힌트 |
+| `temperature` | number | `0`–`1` | 인식 샘플링 온도 |
+| `detect_language` | boolean | 선택 | 언어 자동 감지 |
+| `noise_reduction_type` | string | `near_field`, `far_field` | 마이크 거리에 맞춘 노이즈 억제 |
+| `use_realtime` | boolean | 선택 | 스트리밍 STT 사용 여부 |
+
+### 파이프라인 LLM
+
+사용 가능한 모델은 다음과 같습니다.
+
+- GPT-5.6: `gpt-5.6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`
+- GPT-5 계열: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`, `gpt-5.2`, `gpt-5.1`, `gpt-5`, `gpt-5-mini`, `gpt-5-nano`
+- GPT-4.1 계열: `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`
+- GPT-4o 계열: `gpt-4o`, `gpt-4o-mini`
+
+| 필드 | 타입 | 값·범위 | 설명 |
+| --- | --- | --- | --- |
+| `temperature` | number | `0`–`2` | 응답의 무작위성 |
+| `top_p` | number | `0`–`1` | Nucleus sampling 범위 |
+| `verbosity` | string | `low`, `medium`, `high` | GPT-5 계열 응답 상세도 |
+| `max_completion_tokens` | integer | `1` 이상 | 최대 생성 토큰 |
+| `frequency_penalty` | number | `-2`–`2` | 반복 억제 |
+| `presence_penalty` | number | `-2`–`2` | 새로운 주제 유도 |
+| `service_tier` | string | `auto`, `default`, `flex`, `scale`, `priority` | 처리 티어 |
+| `parallel_tool_calls` | boolean | 선택 | 병렬 도구 호출 허용 |
+| `seed` | integer | 선택 | 결정적 샘플링용 시드 |
+
+GPT-5 계열 파이프라인 모델은 통화 도구와 함께 안정적으로 동작하도록 `reasoning_effort: "none"`이 자동 적용됩니다.
+
+### VAD 설정
+
+현재 VAD 제공자는 `silero`입니다. `vad`를 생략하면 런타임 기본값을 사용합니다.
+
+| 필드 | 타입 | 범위 | 설명 |
+| --- | --- | --- | --- |
+| `min_silence_duration` | number | `0`–`3`초 | 이만큼 침묵하면 발화가 끝난 것으로 판단합니다. |
+| `min_speech_duration` | number | `0`–`1`초 | 이보다 짧은 소리를 발화에서 제외합니다. |
+| `prefix_padding_duration` | number | `0`–`2`초 | 감지된 발화 앞에 포함할 여유 구간입니다. |
+| `max_buffered_speech` | number | `1`–`120`초 | 버퍼링할 최대 발화 길이입니다. |
+| `activation_threshold` | number | `0`–`1` | 음성으로 판단하는 확률 임계값입니다. |
+| `sample_rate` | integer | `16000`, `8000` | VAD 입력 샘플레이트입니다. |
+| `force_cpu` | boolean | 선택 | CPU에서 VAD를 실행합니다. |
+
+### 대화 세션 설정
+
+| 필드 | 타입 | 값·범위 | 설명 |
+| --- | --- | --- | --- |
+| `turn_detection` | string | `vad`, `stt` | 발화 종료 판단 방식 |
+| `allow_interruptions` | boolean | 선택 | 사용자가 에이전트의 말을 끊을 수 있는지 지정 |
+| `min_endpointing_delay` | number | `0`–`5`초 | 발화 종료 전 최소 대기 |
+| `max_endpointing_delay` | number | `0`–`15`초 | 발화 종료 전 최대 대기 |
+| `min_interruption_duration` | number | `0`–`2`초 | 끼어들기로 인정할 최소 발화 길이 |
+
+## 지식 등록과 검색
+
+회사 소개, 상품 안내와 운영 정책처럼 에이전트가 정확하게 참고해야 할 자료를 등록할 수 있습니다. 지식 문서 등록과 지식 검색 활성화가 모두 완료되어야 통화 중 문서를 검색합니다.
+
+### 지식 문서 등록
+
+먼저 에이전트를 생성해 `{agentId}`를 준비합니다. 텍스트를 바로 등록하거나 파일을 업로드할 수 있습니다.
+
+#### 텍스트 등록
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}/knowledge" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "환불 정책", "text": "환불은 결제일로부터 7일 이내에 요청할 수 있습니다."}'
+```
+
+#### 파일 등록
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}/knowledge" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "title=환불 정책" \
+  -F "file=@./refund-policy.pdf"
+```
+
+`.txt`, `.text`, `.md`, `.markdown`과 텍스트 기반 `.pdf` 파일을 지원합니다. 파일은 한 번에 한 개씩, 최대 10MB까지 업로드할 수 있으며 추출된 텍스트는 최대 200,000자여야 합니다. 스캔 PDF와 이미지의 OCR은 지원하지 않습니다.
+
+등록 요청 안에서 텍스트 추출, 문서 분할과 검색용 임베딩 생성을 완료합니다. `201 Created` 응답의 `documentId`를 재색인하거나 삭제할 때 사용합니다.
+
+### 지식 문서 목록
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}/knowledge" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+각 문서의 `status`, `charCount`, `chunkCount`와 `embeddingModel`을 확인할 수 있습니다.
+
+### 지식 문서 재색인
+
+저장된 원문을 현재 분할 규칙과 임베딩 모델로 다시 색인합니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}/knowledge/{documentId}/reindex" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### 지식 문서 삭제
+
+문서와 해당 문서에서 생성된 검색용 문서 조각을 함께 삭제합니다.
+
+```bash
+curl -X DELETE "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}/knowledge/{documentId}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### 지식 검색 활성화
+
+모든 출력 방식에서 `configuration.knowledge`로 지식 검색 사용 여부와 한 번에 참고할 문서 조각 수를 설정할 수 있습니다.
+
+```json
+{
+  "knowledge": {
+    "enabled": true,
+    "topK": 5
+  }
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `enabled` | boolean | `true`이면 통화 중 필요한 순간에 등록된 지식을 검색합니다. 기본값은 `false`입니다. |
+| `topK` | integer | 질문마다 참고할 문서 조각 수입니다. `1`–`10`, 기본값은 `5`입니다. |
+
+`topK`가 크면 더 넓은 내용을 참고하지만 응답이 느려지고 관련성이 낮은 내용이 포함될 수 있습니다. 먼저 기본값 `5`로 테스트한 뒤 조정하세요.
+
+## 응답 구성
+
+생성·조회·수정 응답에는 간단한 요약 필드와 전체 `configuration`이 함께 반환됩니다.
+
+```json
+{
+  "agentId": "cmagent123",
+  "name": "지원 에이전트",
+  "instructions": "고객 문의를 친절하게 안내하세요.",
+  "greeting": true,
+  "language": "ko",
+  "model": "gpt-realtime-2.1-mini",
+  "voice": "7706804e-ea85-443a-968a-b9bf363bdde8",
+  "voiceProvider": "cartesia",
+  "voiceModel": "sonic-3.5",
+  "configuration": {
+    "outputMode": "external_tts",
+    "language": "ko",
+    "knowledge": {
+      "enabled": false,
+      "topK": 5
+    },
+    "stt": null,
+    "llm": {
+      "provider": "openai-realtime",
+      "model": "gpt-realtime-2.1-mini"
+    },
+    "tts": {
+      "provider": "cartesia",
+      "model": "sonic-3.5",
+      "voice": "7706804e-ea85-443a-968a-b9bf363bdde8",
+      "language": "ko"
+    },
+    "vad": null,
+    "session": null
+  },
+  "phoneNumbers": [],
+  "dateCreated": "2026-07-30T04:00:00.000Z",
+  "dateUpdated": "2026-07-30T04:00:00.000Z"
+}
+```
+
+`model`, `voice`, `voiceProvider`, `voiceModel`은 목록 화면과 단순 연동을 위한 요약입니다. 세부 설정을 읽을 때는 `configuration`을 사용하세요.
+
+## 에이전트 목록 조회
+
+계정에 속한 에이전트를 최신 생성 순으로 조회합니다.
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+응답의 `data` 배열에 에이전트가 반환됩니다.
+
+## 에이전트 조회
+
+에이전트 한 개의 전체 설정과 연결된 전화번호를 조회합니다.
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 에이전트 수정
+
+이름, 지침과 기본 Realtime·Cartesia 설정은 필요한 필드만 보낼 수 있습니다.
+
+```bash
+curl -X PATCH "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"instructions": "예약 요청을 확인하고 필요한 정보를 정중하게 안내하세요."}'
+```
+
+출력 방식이나 STT·LLM·TTS 구성을 변경할 때는 `configuration` 전체를 전송합니다. 이 경우 기존 `configuration`을 부분 병합하지 않고 새 설정으로 교체합니다. 같은 요청에 포함한 `instructions`와 `greeting`은 새 구성에도 반영됩니다.
+
+```bash
+curl -X PATCH "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "configuration": {
+      "outputMode": "external_tts",
+      "knowledge": {
+        "enabled": true,
+        "topK": 5
+      },
+      "llm": {
+        "provider": "openai-realtime",
+        "model": "gpt-realtime-2.1-mini"
+      },
+      "tts": {
+        "provider": "cartesia",
+        "model": "sonic-3.5",
+        "voice": "7706804e-ea85-443a-968a-b9bf363bdde8",
+        "speed": 0.9,
+        "volume": 1.1
+      }
+    }
+  }'
+```
+
+## 전화번호에 연결
+
+발급한 전화번호의 라우팅을 `agent`로 변경하면 인바운드 전화를 에이전트가 받습니다.
+
+```bash
+curl -X PUT "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers/{number}" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"routingType": "agent", "agentId": "{agentId}"}'
+```
+
+전화번호와 에이전트는 같은 ClawOps 계정에 속해야 합니다. 연결된 번호는 에이전트 응답의 `phoneNumbers`에서 확인할 수 있습니다.
+
+## 에이전트 삭제
+
+```bash
+curl -X DELETE "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents/{agentId}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+착신 번호에 연결된 에이전트는 삭제할 수 없습니다. 먼저 해당 번호의 라우팅을 다른 대상으로 변경해야 합니다. 삭제에 성공하면 `204 No Content`가 반환됩니다.

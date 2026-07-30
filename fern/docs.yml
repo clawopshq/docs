@@ -45,6 +45,11 @@ navigation:
           - page: Network
             path: docs/pages/guides/network.mdx
             hidden: true
+      - section: 가이드
+        contents:
+          - page: 에이전트
+            path: docs/pages/guides/agents.mdx
+            icon: robot
       - section: SDKs
         contents:
           - page: TypeScript / JavaScript
@@ -55,9 +60,11 @@ navigation:
             icon: fa-brands fa-python
   - tab: integrations
     layout:
-      - page: Overview
-        path: docs/pages/integrations.mdx
-        icon: plug
+      - section: AI 에이전트 연결하기
+        contents:
+          - page: Claude Code
+            path: docs/pages/integrations.mdx
+            icon: terminal
   - tab: api-reference
     layout:
       - section: Overview

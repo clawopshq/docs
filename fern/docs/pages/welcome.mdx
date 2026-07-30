@@ -39,7 +39,7 @@ ClawOps는 한국 전화 인프라를 위한 CPaaS API 플랫폼입니다. 070 �
     SMS·LMS·MMS를 발송하고 수신 메시지와 미디어를 Webhook으로 처리합니다.
   </Card>
 
-  <Card title="AI 에이전트" icon="fa-solid fa-robot" href="https://platform.claw-ops.com/agents">
+  <Card title="에이전트" icon="fa-solid fa-robot" href="/agents">
     모델, 시스템 프롬프트와 음성을 설정해 전화를 직접 처리하는 지능형 에이전트를 만듭니다.
   </Card>
 
@@ -57,28 +57,44 @@ ClawOps는 한국 전화 인프라를 위한 CPaaS API 플랫폼입니다. 070 �
 <Steps>
   ### Account ID 준비
 
-  [ClawOps 대시보드](https://platform.claw-ops.com)에 가입하고 **개발자 → API & Webhooks**에서 Account ID를 확인합니다. API나 SDK도 사용할 예정이라면 같은 화면에서 API Key를 함께 발급하세요.
-
-  ```bash
-  export CLAWOPS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
-  export CLAWOPS_API_KEY="YOUR_API_KEY"
-  ```
+  [ClawOps 대시보드](https://platform.claw-ops.com)에 가입하고 **개발자 → API & Webhooks**에서 Account ID를 확인한 뒤 API Key를 발급합니다.
 
   ### 에이전트 생성
 
-  [대시보드 → 에이전트](https://platform.claw-ops.com/agents)에서 **새 에이전트**를 선택합니다.
+  이름과 역할을 지정해 한국어 음성 에이전트를 만듭니다.
 
-  **지능형 에이전트**를 고르고 이름을 입력한 뒤 **만들고 구성하기**를 누르세요. 모델, 시스템 프롬프트와 음성을 설정하고 저장합니다.
+  ```bash
+  curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/agents" \
+    -H "Authorization: Bearer YOUR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"name": "지원 에이전트"}'
+  ```
 
-  ### 번호 발급 후 에이전트 연결
+  ### 번호 발급
 
-  [대시보드 → 전화번호](https://platform.claw-ops.com/phone-numbers)에서 **번호 추가**를 눌러 070 번호를 발급합니다.
+  음성 통화와 SMS·LMS·MMS를 사용할 수 있는 한국 전화번호를 발급합니다.
 
-  발급된 번호의 상세 화면에서 **인바운드 라우팅 → 수정 → 에이전트**를 선택하고, 앞 단계에서 만든 에이전트를 **착신 에이전트**로 지정한 뒤 저장합니다.
+  ```bash
+  curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers" \
+    -H "Authorization: Bearer YOUR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{}'
+  ```
 
-  ### 전화 받아보기
+  ### 에이전트 연결
 
-  휴대폰에서 발급된 070 번호로 전화를 걸어보세요. 연결한 에이전트가 전화를 받고 설정한 프롬프트와 음성으로 대화를 시작합니다.
+  발급한 번호를 에이전트에 연결해 전화를 받을 수 있도록 설정합니다.
+
+  ```bash
+  curl -X PUT "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers/{number}" \
+    -H "Authorization: Bearer YOUR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{"routingType": "agent", "agentId": "{agentId}"}'
+  ```
+
+  ### 전화 걸어보기
+
+  휴대폰에서 발급된 `070` 번호로 전화를 걸어보세요. 연결한 에이전트가 전화를 받고 대화를 시작합니다.
 </Steps>
 
 ## 인증
