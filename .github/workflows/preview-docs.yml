@@ -2,9 +2,14 @@ name: Preview Docs
 
 on: pull_request
 
+concurrency:
+  group: fern-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write
@@ -27,15 +32,35 @@ jobs:
       - name: Setup Fern CLI
         uses: fern-api/setup-fern-cli@v1
 
+      - name: Verify Fern credentials
+        env:
+          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
+        run: |
+          if [ -z "$FERN_TOKEN" ]; then
+            echo "::error::FERN_TOKEN repository secret is required"
+            exit 1
+          fi
+
       - name: Generate preview URL
         id: generate-docs
         env:
           FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
-          HEAD_REF: ${{ github.head_ref }}
+          PREVIEW_ID: pr-${{ github.event.pull_request.number }}
         run: |
-          OUTPUT=$(fern generate --docs --preview --id "$HEAD_REF" 2>&1) || true
+          set +e
+          OUTPUT=$(fern generate --docs --preview --id "$PREVIEW_ID" 2>&1)
+          STATUS=$?
+          set -e
           echo "$OUTPUT"
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::Fern preview generation failed"
+            exit "$STATUS"
+          fi
           URL=$(echo "$OUTPUT" | grep -oP 'Published docs to \K.*(?= \()')
+          if [ -z "$URL" ]; then
+            echo "::error::Fern preview URL was not found in the publish output"
+            exit 1
+          fi
           echo "preview_url=$URL" >> $GITHUB_OUTPUT
           echo "Preview URL: $URL"
 
