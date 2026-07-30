@@ -12,38 +12,27 @@ layout:
   tabs-placement: header
 
 tabs:
-  guides:
+  documentation:
     display-name: Documentation
     icon: book-open
+  integrations:
+    display-name: Integrations
+    icon: plug
   api-reference:
     display-name: API Reference
     icon: code
 
 navigation:
-  - tab: guides
+  - tab: documentation
     layout:
-      - section: 시작하기
-        contents:
-          - page: Welcome
-            path: docs/pages/welcome.mdx
-            icon: house
-          - page: Quickstart
-            path: docs/pages/getting-started.mdx
-            icon: rocket
-      - section: 핵심 가이드
-        contents:
-          - page: Voice Agent
-            path: docs/pages/guides/voice-agent.mdx
-            icon: microphone
-          - page: VoiceML
-            path: docs/pages/guides/voiceml.mdx
-            icon: diagram-project
-          - page: Webhooks
-            path: docs/pages/guides/webhooks.mdx
-            icon: webhook
-          - page: Network
-            path: docs/pages/guides/network.mdx
-            icon: network-wired
+      - page: Overview
+        path: docs/pages/welcome.mdx
+        icon: house
+  - tab: integrations
+    layout:
+      - page: Overview
+        path: docs/pages/integrations.mdx
+        icon: plug
   - tab: api-reference
     layout:
       - section: Overview

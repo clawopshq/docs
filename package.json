@@ -8,6 +8,6 @@
     "publish": "fern generate --docs"
   },
   "devDependencies": {
-    "fern-api": "5.35.4"
+    "fern-api": "^5.84.0"
   }
 }
