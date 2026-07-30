@@ -839,7 +839,7 @@
       "post": {
         "operationId": "createCall",
         "summary": "발신 전화 생성",
-        "description": "아웃바운드 전화를 발신합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\n**전화 발신**: To에 전화번호를 입력하면 일반 전화로 발신됩니다.\n- 예: `\"To\": \"01012345678\"`\n\n**Agent 모드**: Url을 생략하면 From 번호에 연결된 Agent SDK로 통화가 연결됩니다.\n- Agent가 연결되어 있지 않으면 409 에러를 반환합니다.\n\n**AI Completion 모드는 종료되었습니다.** AI 필드를 포함한 요청은 410으로 거절됩니다.\nUrl(VoiceML) 또는 Agent SDK를 사용하세요.",
+        "description": "아웃바운드 전화를 발신합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\n**전화 발신**: To에 전화번호를 입력하면 일반 전화로 발신됩니다.\n- 예: `\"To\": \"01012345678\"`\n\n**매니지드 에이전트**: `AgentId`를 지정하면 콘솔에서 만든 AI 에이전트가 통화를 처리합니다.\n\n**Agent SDK**: `Url`, `AgentId`, `CallFlowId`를 모두 생략하면 From 번호에 연결된\nAgent SDK로 통화가 연결됩니다. Agent가 연결되어 있지 않으면 409 에러를 반환합니다.\n\n`Url`, `AgentId`, `CallFlowId`는 서로 배타적입니다. `201 Created`는 발신 요청이\n큐에 들어갔다는 뜻이며 통화 연결 성공을 뜻하지 않습니다. 반환된 `callId`를\n`GET /v1/accounts/{accountId}/calls/{callId}`로 조회해 최종 상태를 확인하세요.\n\n**AI Completion 모드는 종료되었습니다.** AI 필드를 포함한 요청은 410으로 거절됩니다.\nUrl(VoiceML), AgentId, CallFlowId 또는 Agent SDK를 사용하세요.",
         "tags": [
           "Calls"
         ],
@@ -879,12 +879,17 @@
                   "Url": {
                     "type": "string",
                     "example": "https://my-app.com/voiceml",
-                    "description": "통화 연결 시 VoiceML을 반환할 URL. 생략 시 From 번호에 연결된 Agent로 통화가 연결됩니다 (Agent 모드)."
+                    "description": "통화 연결 시 VoiceML을 반환할 URL. AgentId·CallFlowId와 배타."
+                  },
+                  "AgentId": {
+                    "type": "string",
+                    "example": "cmagent123",
+                    "description": "콘솔에서 만든 매니지드 에이전트 ID. Url·CallFlowId와 배타."
                   },
                   "CallFlowId": {
                     "type": "string",
                     "example": "cmryw3ycm000001s6on0kp9a8",
-                    "description": "콜 플로우(결정적 ARS) ID. 지정하면 그 플로우가 통화를 진행합니다. Url과 동시에 사용할 수 없습니다. ID는 `GET /v1/accounts/{accountId}/call-flows`로 조회합니다.\n"
+                    "description": "콜 플로우(결정적 ARS) ID. 지정하면 그 플로우가 통화를 진행합니다. Url·AgentId와 동시에 사용할 수 없습니다. ID는 `GET /v1/accounts/{accountId}/call-flows`로 조회합니다.\n"
                   },
                   "Variables": {
                     "type": "object",
@@ -951,11 +956,15 @@
                   },
                   "Url": {
                     "type": "string",
-                    "description": "통화 연결 시 VoiceML을 반환할 URL. 생략 시 Agent 모드."
+                    "description": "통화 연결 시 VoiceML을 반환할 URL. AgentId·CallFlowId와 배타."
+                  },
+                  "AgentId": {
+                    "type": "string",
+                    "description": "콘솔에서 만든 매니지드 에이전트 ID. Url·CallFlowId와 배타."
                   },
                   "CallFlowId": {
                     "type": "string",
-                    "description": "콜 플로우(결정적 ARS) ID. Url과 배타."
+                    "description": "콜 플로우(결정적 ARS) ID. Url·AgentId와 배타."
                   },
                   "Variables": {
                     "type": "string",
@@ -989,7 +998,7 @@
         },
         "responses": {
           "201": {
-            "description": "발신 요청 성공",
+            "description": "발신 요청이 큐에 등록됨. 실제 연결 여부는 반환된 callId를 조회해 확인합니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -999,7 +1008,7 @@
             }
           },
           "400": {
-            "description": "잘못된 요청. 다음 케이스에서 발생:\n  - 필수 파라미터 누락 (To, From)\n  - From 번호 미등록\n  - To 전화번호 정규화 실패. `code` 필드:\n    - `INVALID_PHONE_NUMBER`: 한국 번호 형식 아님 (포맷 오류, 자릿수 오류, +82-15XX 대표번호 E.164 등)\n    - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
+            "description": "잘못된 요청. 다음 케이스에서 발생:\n  - 필수 파라미터 누락 (To, From)\n  - From 번호 미등록\n  - Url·AgentId·CallFlowId를 동시에 지정\n  - Variables를 CallFlowId 없이 지정하거나 이름·값·크기 규칙 위반\n  - Url 또는 StatusCallback에 내부/사설 주소 지정\n  - To 전화번호 정규화 실패. `code` 필드:\n    - `INVALID_PHONE_NUMBER`: 한국 번호 형식 아님 (포맷 오류, 자릿수 오류, +82-15XX 대표번호 E.164 등)\n    - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1028,6 +1037,16 @@
               }
             }
           },
+          "404": {
+            "description": "AgentId 또는 CallFlowId에 해당하는 대상을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "409": {
             "description": "From 번호에 연결된 Agent가 없습니다 (Url 미지정 시)",
             "content": {
@@ -1038,8 +1057,18 @@
               }
             }
           },
+          "410": {
+            "description": "종료된 AI Completion 모드 요청",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "422": {
-            "description": "통화 분 할당량 초과",
+            "description": "통화 분 할당량 초과, 발신 미지원 플랜 또는 AMD 애드온 비활성",
             "content": {
               "application/json": {
                 "schema": {
