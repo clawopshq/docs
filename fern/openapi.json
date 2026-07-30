@@ -86,7 +86,8 @@
             "schema": {
               "type": "string"
             },
-            "description": "계정 ID"
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
           }
         ],
         "responses": {
@@ -138,7 +139,8 @@
             "schema": {
               "type": "string"
             },
-            "description": "계정 ID"
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
           }
         ],
         "requestBody": {
@@ -250,7 +252,8 @@
             "schema": {
               "type": "string"
             },
-            "description": "계정 ID"
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
           }
         ],
         "responses": {
@@ -392,6 +395,9 @@
                     "description": "에이전트 실행 설정 전체를 교체합니다. 지정하면 model과 voice 단축 필드는 함께 사용할 수 없습니다."
                   }
                 }
+              },
+              "example": {
+                "name": "야간 고객 지원 에이전트"
               }
             }
           }
