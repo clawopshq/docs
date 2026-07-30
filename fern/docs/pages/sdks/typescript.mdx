@@ -1,0 +1,83 @@
+---
+title: TypeScript / JavaScript SDK
+description: ClawOps Voice API를 위한 공식 Node.js 및 TypeScript 라이브러리입니다.
+slug: sdk/typescript
+---
+
+# TypeScript / JavaScript SDK
+
+공식 ClawOps TypeScript SDK는 Node.js 애플리케이션에서 통화, 전화번호, 메시지, 녹음과 SIP 리소스를 타입 안전하게 사용할 수 있도록 합니다.
+
+[![npm](https://img.shields.io/npm/v/%40teamlearners%2Fclawops)](https://www.npmjs.com/package/@teamlearners/clawops)
+
+<Info>
+  현재 공개 버전은 `0.26.0`이며 Node.js 18 이상을 지원합니다.
+</Info>
+
+## 설치
+
+```bash
+npm install @teamlearners/clawops
+```
+
+## 빠른 시작
+
+```typescript
+import ClawOps from "@teamlearners/clawops";
+
+const client = new ClawOps({
+  apiKey: process.env.CLAWOPS_API_KEY,
+  accountId: process.env.CLAWOPS_ACCOUNT_ID,
+});
+
+// 보유 전화번호 조회
+const numbers = await client.numbers.list();
+
+// 아웃바운드 통화 발신
+const call = await client.calls.create({
+  to: "01012345678",
+  from: "07012341234",
+  url: "https://example.com/voice",
+});
+
+console.log(call.callId);
+```
+
+생성자 옵션을 생략하면 `CLAWOPS_API_KEY`와 `CLAWOPS_ACCOUNT_ID` 환경변수를 자동으로 사용합니다.
+
+## AI 음성 에이전트
+
+OpenAI Realtime 기반 Voice Agent를 실행하려면 `openai`를 함께 설치합니다.
+
+```bash
+npm install @teamlearners/clawops openai
+```
+
+```typescript
+import { ClawOpsAgent, OpenAIRealtime } from "@teamlearners/clawops/agent";
+
+const agent = new ClawOpsAgent({
+  from: "07012341234",
+  session: new OpenAIRealtime({
+    systemPrompt: "친절한 고객 상담원입니다. 한국어로 응대합니다.",
+    language: "ko",
+  }),
+});
+
+await agent.serve();
+```
+
+## 주요 리소스
+
+- `client.calls` — 통화 발신, 조회, 종료, 녹음·전사·요약
+- `client.numbers` — 전화번호 발급, 조회, 라우팅, 해제
+- `client.messages` — SMS·LMS·MMS 발송 및 조회
+- `client.recordings` — 통화 녹음 다운로드 및 삭제
+- `client.sipEndpoints`, `client.sipCredentials` — SIP와 WebRTC 연동
+- `client.webhookLogs` — Webhook 전달 이력 조회
+
+## 링크
+
+- [npm 패키지](https://www.npmjs.com/package/@teamlearners/clawops)
+- [GitHub 저장소](https://github.com/learners-superpumped/clawops-node)
+- [API 레퍼런스](/api-reference)

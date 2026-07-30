@@ -1,0 +1,86 @@
+---
+title: Python SDK
+description: ClawOps Voice API를 위한 공식 Python 라이브러리입니다.
+slug: sdk/python
+---
+
+# Python SDK
+
+공식 ClawOps Python SDK는 동기·비동기 클라이언트와 AI 음성 에이전트 프레임워크를 제공합니다.
+
+[![PyPI](https://img.shields.io/pypi/v/clawops.svg)](https://pypi.org/project/clawops/)
+[![Python](https://img.shields.io/pypi/pyversions/clawops.svg)](https://pypi.org/project/clawops/)
+
+<Info>
+  현재 공개 버전은 `0.38.0`이며 Python 3.9 이상을 지원합니다.
+</Info>
+
+## 설치
+
+```bash
+pip install clawops
+```
+
+## 빠른 시작
+
+```python
+from clawops import ClawOps
+
+client = ClawOps(
+    api_key="YOUR_API_KEY",
+    account_id="YOUR_ACCOUNT_ID",
+)
+
+# 보유 전화번호 조회
+numbers = client.numbers.list()
+
+# 아웃바운드 통화 발신
+call = client.calls.create(
+    to="01012345678",
+    from_="07012341234",
+    url="https://example.com/voice",
+)
+
+print(call.call_id)
+```
+
+생성자 옵션을 생략하면 `CLAWOPS_API_KEY`와 `CLAWOPS_ACCOUNT_ID` 환경변수를 자동으로 사용합니다.
+
+## AI 음성 에이전트
+
+OpenAI Realtime 기반 Voice Agent를 사용하려면 optional dependency를 함께 설치합니다.
+
+```bash
+pip install "clawops[agent,openai]"
+```
+
+```python
+import asyncio
+from clawops.agent import ClawOpsAgent, OpenAIRealtime
+
+agent = ClawOpsAgent(
+    from_="07012341234",
+    session=OpenAIRealtime(
+        system_prompt="친절한 고객 상담원입니다. 한국어로 응대합니다.",
+        language="ko",
+    ),
+)
+
+asyncio.run(agent.serve())
+```
+
+## 주요 리소스
+
+- `client.calls` — 통화 발신, 조회, 종료, 녹음·전사·요약
+- `client.numbers` — 전화번호 발급, 조회, 라우팅, 해제
+- `client.messages` — SMS·LMS·MMS 발송 및 조회
+- `client.recordings` — 통화 녹음 다운로드 및 삭제
+- `client.sip_endpoints`, `client.sip_credentials` — SIP와 WebRTC 연동
+- `client.webhook_logs` — Webhook 전달 이력 조회
+- `AsyncClawOps` — 모든 주요 리소스의 비동기 클라이언트
+
+## 링크
+
+- [PyPI 패키지](https://pypi.org/project/clawops/)
+- [GitHub 저장소](https://github.com/learners-superpumped/clawops-python)
+- [API 레퍼런스](/api-reference)

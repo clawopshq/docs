@@ -30,6 +30,29 @@ navigation:
           - page: 환영합니다
             path: docs/pages/welcome.mdx
             icon: house
+          - page: 빠른 시작
+            path: docs/pages/getting-started.mdx
+            hidden: true
+          - page: Voice Agent
+            path: docs/pages/guides/voice-agent.mdx
+            hidden: true
+          - page: VoiceML
+            path: docs/pages/guides/voiceml.mdx
+            hidden: true
+          - page: Webhooks
+            path: docs/pages/guides/webhooks.mdx
+            hidden: true
+          - page: Network
+            path: docs/pages/guides/network.mdx
+            hidden: true
+      - section: SDKs
+        contents:
+          - page: TypeScript / JavaScript
+            path: docs/pages/sdks/typescript.mdx
+            icon: fa-brands fa-js
+          - page: Python
+            path: docs/pages/sdks/python.mdx
+            icon: fa-brands fa-python
   - tab: integrations
     layout:
       - page: Overview
@@ -56,11 +79,11 @@ navbar-links:
 
 colors:
   accent-primary:
-    dark: "#A5B4FC"
-    light: "#3730A3"
+    dark: "#FAFAF9"
+    light: "#0A0A0A"
   background:
-    dark: "#0F172A"
-    light: "#FFFFFF"
+    dark: "#0A0A0A"
+    light: "#FAFAF9"
 
 theme:
   page-actions: toolbar
@@ -74,6 +97,9 @@ logo:
 
 favicon: docs/assets/favicon.svg
 css: styles.css
+js:
+  - path: korean-ui.js
+    strategy: beforeInteractive
 
 metadata:
   og:dynamic: true

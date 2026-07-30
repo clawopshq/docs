@@ -1,5 +1,7 @@
 .fern-background-image {
-  background-image:
-    radial-gradient(circle at 15% 0%, rgba(129, 140, 248, 0.12), transparent 34%),
-    radial-gradient(circle at 85% 10%, rgba(96, 165, 250, 0.08), transparent 30%);
+  background-image: radial-gradient(circle at 15% 0%, rgba(10, 10, 10, 0.035), transparent 34%);
+}
+
+:root.dark .fern-background-image {
+  background-image: radial-gradient(circle at 15% 0%, rgba(250, 250, 249, 0.04), transparent 34%);
 }

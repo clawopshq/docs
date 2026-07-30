@@ -1,36 +1,107 @@
 ---
-title: ClawOps에 오신 것을 환영합니다
-description: 한국 전화 인프라와 AI 음성 에이전트를 하나의 API로 연결하세요.
+title: 환영합니다
 slug: welcome
+description: 한국 전화번호, 메시지와 AI 음성 통화를 하나의 API로 연결하세요.
 ---
 
-# ClawOps Documentation
+<Tip title="ClawOps에 오신 것을 환영합니다!" icon="fa-solid fa-star">
+  AI 에이전트에 한국 전화번호를 연결하고, 전화를 걸고 받거나 SMS·LMS·MMS를 주고받으세요. 간단한 API와 SDK만으로 시작할 수 있습니다.
+</Tip>
 
-ClawOps는 한국 전화번호, 음성 통화, 문자 메시지와 AI 음성 에이전트를 하나의 API로 연결하는 커뮤니케이션 플랫폼입니다.
+ClawOps는 한국 전화 인프라를 위한 CPaaS API 플랫폼입니다. 070 번호를 발급하고, 음성 통화와 메시지를 처리하고, AI 음성 에이전트·VoiceML·SIP·WebRTC를 실제 전화망에 연결할 수 있습니다.
 
-<CardGroup cols={2}>
-  <Card title="5분 Quickstart" icon="rocket" href="/getting-started">
-    번호를 발급하고 첫 번째 AI 음성 에이전트를 실행합니다.
+## 시작하기
+
+<CardGroup cols={3}>
+  <Card title="빠른 시작" icon="fa-solid fa-bolt" href="#빠른-시작">
+    에이전트를 만들고 전화번호를 연결해 첫 번째 인바운드 통화를 받아봅니다.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference">
-    인증 방식과 REST API 엔드포인트를 확인합니다.
+  <Card title="API 레퍼런스" icon="fa-solid fa-code" href="/api-reference">
+    전체 API를 요청·응답 스키마와 대화형 예제로 확인합니다.
   </Card>
-  <Card title="Voice Agent" icon="microphone" href="/voice-agent">
-    Python 또는 TypeScript SDK로 실시간 음성 에이전트를 만듭니다.
-  </Card>
-  <Card title="VoiceML" icon="diagram-project" href="/voiceml">
-    XML 응답으로 IVR, 연결, 녹음과 스트리밍 흐름을 제어합니다.
+  <Card title="연동" icon="fa-solid fa-plug" href="/integrations">
+    AI 음성 모델, SIP 플랫폼과 WebRTC 클라이언트를 연결합니다.
   </Card>
 </CardGroup>
 
-## 무엇을 만들 수 있나요?
+## 핵심 개념
 
-- 한국 070 번호 기반 인바운드·아웃바운드 통화
-- OpenAI Realtime 등과 연결된 AI 음성 에이전트
-- VoiceML 기반 IVR, 녹음, 통화 연결과 실시간 스트리밍
-- SMS, LMS, MMS 발송 및 이벤트 Webhook
-- SIP 트렁크와 WebRTC 클라이언트 연동
+<CardGroup cols={2}>
+  <Card title="전화번호" icon="fa-solid fa-phone" href="/api-reference/claw-ops-api/numbers/list-numbers">
+    한국 070 번호를 발급하고 인바운드 라우팅을 Voice Agent, VoiceML, Call Flow, SIP 또는 WebRTC로 연결합니다.
+  </Card>
 
-<Info>
-  이 저장소는 공개 개발자 문서만 포함합니다. 내부 아키텍처, 운영 Runbook, 배포 계획은 제품 저장소에서 별도로 관리합니다.
-</Info>
+  <Card title="통화" icon="fa-solid fa-phone-volume" href="/api-reference/claw-ops-api/calls/list-calls">
+    인바운드·아웃바운드 통화를 제어하고 이벤트, 녹음, 전사와 요약을 조회합니다.
+  </Card>
+
+  <Card title="메시지" icon="fa-regular fa-comments" href="/api-reference/claw-ops-api/messages/list-messages">
+    SMS·LMS·MMS를 발송하고 수신 메시지와 미디어를 Webhook으로 처리합니다.
+  </Card>
+
+  <Card title="AI 에이전트" icon="fa-solid fa-robot" href="https://platform.claw-ops.com/agents">
+    모델, 시스템 프롬프트와 음성을 설정해 전화를 직접 처리하는 지능형 에이전트를 만듭니다.
+  </Card>
+
+  <Card title="VoiceML과 Call Flow" icon="fa-solid fa-diagram-project" href="/voiceml">
+    XML 또는 시각적 Call Flow로 안내, 입력 수집, 연결, 녹음과 음성 스트리밍을 구성합니다.
+  </Card>
+
+  <Card title="Webhooks" icon="fa-solid fa-satellite-dish" href="/webhooks">
+    메시지, 녹음, 전사, 요약, Agent 연결과 Call Flow 이벤트를 HMAC 서명과 함께 받습니다.
+  </Card>
+</CardGroup>
+
+## 빠른 시작
+
+<Steps>
+  ### Account ID 준비
+
+  [ClawOps 대시보드](https://platform.claw-ops.com)에 가입하고 **개발자 → API & Webhooks**에서 Account ID를 확인합니다. API나 SDK도 사용할 예정이라면 같은 화면에서 API Key를 함께 발급하세요.
+
+  ```bash
+  export CLAWOPS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+  export CLAWOPS_API_KEY="YOUR_API_KEY"
+  ```
+
+  ### 에이전트 생성
+
+  [대시보드 → 에이전트](https://platform.claw-ops.com/agents)에서 **새 에이전트**를 선택합니다.
+
+  **지능형 에이전트**를 고르고 이름을 입력한 뒤 **만들고 구성하기**를 누르세요. 모델, 시스템 프롬프트와 음성을 설정하고 저장합니다.
+
+  ### 번호 발급 후 에이전트 연결
+
+  [대시보드 → 전화번호](https://platform.claw-ops.com/phone-numbers)에서 **번호 추가**를 눌러 070 번호를 발급합니다.
+
+  발급된 번호의 상세 화면에서 **인바운드 라우팅 → 수정 → 에이전트**를 선택하고, 앞 단계에서 만든 에이전트를 **착신 에이전트**로 지정한 뒤 저장합니다.
+
+  ### 전화 받아보기
+
+  휴대폰에서 발급된 070 번호로 전화를 걸어보세요. 연결한 에이전트가 전화를 받고 설정한 프롬프트와 음성으로 대화를 시작합니다.
+</Steps>
+
+## 인증
+
+모든 API 요청의 `Authorization` 헤더에 API 키를 Bearer 토큰으로 전달합니다.
+
+```text
+Authorization: Bearer YOUR_API_KEY
+```
+
+## Base URL
+
+```text
+https://api.claw-ops.com
+```
+
+## 도움이 필요하신가요?
+
+<CardGroup cols={2}>
+  <Card title="GitHub" icon="fa-brands fa-github" href="https://github.com/learners-superpumped">
+    ClawOps SDK와 공개 프로젝트를 확인하세요.
+  </Card>
+  <Card title="ClawOps 대시보드" icon="fa-solid fa-house" href="https://platform.claw-ops.com">
+    계정을 만들고 API 키를 발급받아 바로 시작하세요.
+  </Card>
+</CardGroup>
