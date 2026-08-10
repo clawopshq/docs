@@ -50,6 +50,9 @@ navigation:
           - page: 에이전트
             path: docs/pages/guides/agents.mdx
             icon: robot
+          - page: 문자 메시지
+            path: docs/pages/guides/messages.mdx
+            icon: comment-sms
       - section: SDKs
         contents:
           - page: TypeScript / JavaScript
