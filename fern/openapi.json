@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "ClawOps API",
-    "version": "1.3.0",
+    "version": "1.3.2",
     "description": "ClawOps CPaaS API — Voice & Messaging. Authorization 헤더에 Bearer <api_key> 형식으로 인증합니다.",
     "license": {
       "name": "ClawOps API Terms of Service",
@@ -50,8 +50,12 @@
       "description": "통화 받아쓰기(전사) hotwords 사전. 조직/번호별로 도메인 용어의 '들리는 발음형'(term)을 등록해 인식을 교정하고, canonical 을 지정하면 전사 후 표기 치환(예 \"클로옵스\"→\"ClawOps\")을 적용합니다. 번호에 사전을 부착하면 계정 기본 사전 대신 그 사전을 대체 적용(병합 아님)합니다."
     },
     {
+      "name": "BlockedRecipients",
+      "description": "수신거부(DNC) 명단. 광고 문자 하단의 080 무료수신거부, ARS의 \"수신거부 9번\", 상담 중 구두 요청 등으로 접수된 번호를 계정 단위로 관리합니다. 전화와 문자는 각각 따로 차단하고, 해제해도 항목은 이력으로 남습니다. 대상은 이 계정의 **발신**(전화·문자)이며 착신은 대상이 아닙니다.\n\n등록하면 **발신이 실제로 막힙니다.** 통화 생성·메시지 발송이 발신 직전에 이 명단을 조회해 `422 recipient_blocked` 로 거절하며, 배치 발신(캠페인)도 같은 관문을 지나므로 해당 대상은 자동으로 건너뜁니다. 막힌 통화는 통화기록에 `hangup_cause=recipient_blocked` 로 남습니다."
+    },
+    {
       "name": "CallFlows",
-      "description": "콜 플로우(결정적 ARS) 조회. 블럭을 조립해 만든 ARS/IVR로, 발신은 createCall의 CallFlowId, 착신은 번호 라우팅(routingType=callflow)으로 연결합니다. 플로우의 생성·편집은 콘솔 빌더에서 하며 API는 읽기 전용입니다. 통화가 수집한 값은 callflow.ended webhook으로 받습니다."
+      "description": "콜 플로우(결정적 ARS) 조회·생성·수정·삭제. 블럭을 조립해 만든 ARS/IVR로, 발신은 createCall의 CallFlowId, 착신은 번호 라우팅(routingType=callflow)으로 연결합니다. 콘솔 빌더와 **같은 그래프 포맷**을 주고받으므로 API로 만든 플로우도 콘솔에서 그대로 열립니다. 통화가 수집한 값은 callflow.ended webhook으로 받습니다."
     },
     {
       "name": "CallBatches",
@@ -60,6 +64,10 @@
     {
       "name": "SipTrunks",
       "description": "BYOC SIP 트렁크 관리. PSTN 인바운드를 외부 PBX로 전달(origination)하기 위한 엔드포인트와 라우트(다이얼 타겟). sip_trunk 애드온이 활성화된 계정만 변경(POST/PUT/DELETE)이 가능합니다."
+    },
+    {
+      "name": "AssignmentSessions",
+      "description": "일회용 고엔트로피 토큰으로 진행하는 최종이용자 관리번호 발급 세션"
     },
     {
       "name": "WebRTC",
@@ -71,6 +79,433 @@
     }
   ],
   "paths": {
+    "/v1/assignment-sessions/{token}": {
+      "get": {
+        "operationId": "getAssignmentSession",
+        "summary": "최종이용자 발급 세션 조회",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "세션 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "step",
+                    "orgName",
+                    "subscriberType",
+                    "assignedNumber"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "consumed",
+                        "revoked"
+                      ]
+                    },
+                    "step": {
+                      "type": "string",
+                      "enum": [
+                        "selectType",
+                        "consents",
+                        "verify",
+                        "businessInfo",
+                        "ready",
+                        "done"
+                      ]
+                    },
+                    "orgName": {
+                      "type": "string"
+                    },
+                    "subscriberType": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "individual",
+                        "corporate"
+                      ]
+                    },
+                    "assignedNumber": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "404": {
+            "description": "세션을 찾을 수 없음"
+          },
+          "410": {
+            "description": "만료 또는 취소된 세션"
+          }
+        }
+      }
+    },
+    "/v1/assignment-sessions/{token}/subscriber-type": {
+      "post": {
+        "operationId": "setAssignmentSessionSubscriberType",
+        "summary": "가입자 유형 선택",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "subscriberType"
+                ],
+                "properties": {
+                  "subscriberType": {
+                    "type": "string",
+                    "enum": [
+                      "individual",
+                      "corporate"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "subscriberType": "individual"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "저장 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "404": {
+            "description": "세션을 찾을 수 없음"
+          },
+          "409": {
+            "description": "이미 사용된 세션"
+          },
+          "410": {
+            "description": "만료 또는 취소된 세션"
+          },
+          "422": {
+            "description": "입력 검증 실패"
+          }
+        }
+      }
+    },
+    "/v1/assignment-sessions/{token}/consents": {
+      "post": {
+        "operationId": "recordAssignmentSessionConsents",
+        "summary": "약관 동의 증적 기록",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "clauseKey",
+                        "agreed"
+                      ],
+                      "properties": {
+                        "clauseKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "agreed": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "example": {
+                "items": [
+                  {
+                    "clauseKey": "management.terms",
+                    "agreed": true
+                  },
+                  {
+                    "clauseKey": "management.account",
+                    "agreed": true
+                  },
+                  {
+                    "clauseKey": "management.privacy",
+                    "agreed": true
+                  },
+                  {
+                    "clauseKey": "management.thirdParty",
+                    "agreed": true
+                  },
+                  {
+                    "clauseKey": "management.marketing",
+                    "agreed": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "기록 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "409": {
+            "description": "가입자 유형 미선택 등 단계 오류"
+          },
+          "422": {
+            "description": "필수 동의 누락"
+          }
+        }
+      }
+    },
+    "/v1/assignment-sessions/{token}/identity-verifications": {
+      "post": {
+        "operationId": "startAssignmentSessionIdentityVerification",
+        "summary": "본인인증 시작",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "링크에 바인딩된 인증 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "identityVerificationId"
+                  ],
+                  "properties": {
+                    "identityVerificationId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "409": {
+            "description": "단계 오류"
+          },
+          "422": {
+            "description": "필수 동의 누락"
+          },
+          "429": {
+            "description": "시도 제한 초과"
+          }
+        }
+      }
+    },
+    "/v1/assignment-sessions/{token}/identity-verifications/resume": {
+      "post": {
+        "operationId": "resumeAssignmentSessionIdentityVerification",
+        "summary": "PortOne 본인인증 결과 검증 및 저장",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "인증 결과 저장 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "kycSnapshotId"
+                  ],
+                  "properties": {
+                    "kycSnapshotId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "409": {
+            "description": "인증 미완료, 단계 오류 또는 명의당 발급 한도 초과"
+          },
+          "502": {
+            "description": "인증 제공자 조회 실패"
+          }
+        }
+      }
+    },
+    "/v1/assignment-sessions/{token}/finalize": {
+      "post": {
+        "operationId": "finalizeAssignmentSession",
+        "summary": "번호 풀 점유 및 발급 완료",
+        "tags": [
+          "AssignmentSessions"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AssignmentSessionToken"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "번호 발급 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "assignedNumber"
+                  ],
+                  "properties": {
+                    "assignedNumber": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "관리번호 외부 발급 애드온 비활성"
+          },
+          "409": {
+            "description": "단계 오류, 번호 재고 또는 한도 부족"
+          },
+          "422": {
+            "description": "필수 동의 누락"
+          }
+        }
+      }
+    },
     "/v1/accounts/{accountId}/agents": {
       "get": {
         "operationId": "listAgents",
@@ -280,6 +715,257 @@
           },
           "401": {
             "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/voice-clones": {
+      "get": {
+        "operationId": "listVoiceClones",
+        "summary": "복제 음성 목록 조회",
+        "description": "현재 계정이 등록한 복제 음성의 상태와 Agent 설정에 사용할 voice ID를 반환합니다.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "AC1a2b3c4d",
+            "description": "계정 ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/VoiceCloneResponse"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createVoiceClone",
+        "summary": "녹음으로 음성 복제",
+        "description": "사용 권리를 확인한 짧은 음성 파일을 복제하고 Agent의 voice로 사용할 ID를 반환합니다.\n원본 오디오는 요청 메모리에서 공급자로 전달한 뒤 즉시 지우며 ClawOps 저장소에 보관하지 않습니다.\n이 API로 만든 음성에는 미리듣기 샘플이 없습니다(콘솔에서 등록한 음성만 생성합니다).\n계정당 시간당 약 10회로 제한됩니다.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "AC1a2b3c4d",
+            "description": "계정 ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "consent",
+                  "clip"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "consent": {
+                    "type": "string",
+                    "example": "true",
+                    "description": "업로더가 이 목소리를 사용할 권리가 있음을 확인해야 합니다. `true` 또는 `on`."
+                  },
+                  "clip": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "최대 10MB의 wav, mp3, flac, ogg, webm 또는 m4a 음성 파일"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "복제 완료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceCloneResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "파일 또는 동의 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "파일 크기 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "시간당 생성 한도 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "음성 공급자 처리 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/voice-clones/{voiceCloneId}": {
+      "delete": {
+        "operationId": "deleteVoiceClone",
+        "summary": "복제 음성 삭제",
+        "description": "계정 소유 복제 음성을 공급자와 ClawOps에서 삭제합니다. Agent나 Call Flow에서 사용 중이면 먼저 분리해야 합니다.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "AC1a2b3c4d",
+            "description": "계정 ID"
+          },
+          {
+            "name": "voiceCloneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "vo_1a2b3c4d",
+            "description": "복제 음성 ID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "삭제 완료"
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "음성을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Agent 또는 Call Flow에서 사용 중",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "음성 공급자 삭제 실패",
             "content": {
               "application/json": {
                 "schema": {
@@ -845,11 +1531,864 @@
         }
       }
     },
+    "/v1/accounts/{accountId}/agents/{agentId}/mcp-connections": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        },
+        {
+          "name": "agentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "에이전트 ID"
+        }
+      ],
+      "get": {
+        "operationId": "listAgentMcpConnections",
+        "summary": "에이전트에 연결된 외부 MCP 목록 조회",
+        "description": "이 에이전트가 통화에서 사용할 MCP 연결과 허용된 도구를 조회합니다. missingTools 가 비어있지 않으면 서버 쪽 도구가 바뀐 것입니다.",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AgentMcpBinding"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "에이전트를 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/agents/{agentId}/mcp-connections/{connectionId}": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        },
+        {
+          "name": "agentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "에이전트 ID"
+        },
+        {
+          "name": "connectionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MCP 연결 ID"
+        }
+      ],
+      "put": {
+        "operationId": "setAgentMcpConnection",
+        "summary": "에이전트에 외부 MCP 연결·도구 지정",
+        "description": "에이전트가 사용할 도구를 지정합니다(멱등). allowedTools 에 넣은 도구만 모델에 노출되며, 같은 연결이라도 에이전트마다 다른 도구를 허용할 수 있습니다.\n\n도구는 1개 이상이어야 하고, 연결 테스트에서 발견된 도구여야 합니다. 연결은 status=tested 이고 enabled 여야 합니다.\n\n저장 즉시 다음 통화부터 적용됩니다(에이전트 설정 저장과 별개).",
+        "tags": [
+          "Agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "allowedTools"
+                ],
+                "properties": {
+                  "allowedTools": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "get_reservation"
+                    ]
+                  },
+                  "failureMode": {
+                    "type": "string",
+                    "enum": [
+                      "continue",
+                      "fail_session"
+                    ],
+                    "default": "continue",
+                    "description": "continue 는 MCP 서버 장애 시 그 도구만 빼고 통화를 계속합니다. fail_session 은 연결 실패 시 세션 시작을 실패시킵니다.",
+                    "example": "continue"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "지정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMcpBinding"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "도구 목록 검증 실패(0개, 중복, 연결에 없는 도구 등)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "에이전트 또는 연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "연결이 비활성화됐거나(MCP_CONNECTION_DISABLED) 아직 테스트를 통과하지 않았거나(MCP_CONNECTION_UNTESTED) 에이전트당 연결 수 상한(3개)을 넘음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAgentMcpConnection",
+        "summary": "에이전트에서 외부 MCP 연결 해제",
+        "description": "연결 자체는 삭제하지 않고 이 에이전트에서만 해제합니다. 다음 통화부터 도구가 빠집니다.",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "해제 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "deleted"
+                  ],
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "에이전트·연결을 찾을 수 없거나 연결되어 있지 않음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/mcp-connections": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        }
+      ],
+      "get": {
+        "operationId": "listMcpConnections",
+        "summary": "외부 MCP 연결 목록 조회",
+        "description": "계정에 등록된 외부 MCP 서버 연결을 최신 등록 순으로 조회합니다. 자격증명은 포함되지 않습니다.",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/McpConnection"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMcpConnection",
+        "summary": "외부 MCP 연결 등록",
+        "description": "에이전트가 사용할 원격 MCP 서버를 등록합니다. url 은 공개 인터넷에서 접근 가능한 https 주소여야 하며(포트는 443만), 자격증명은 query 가 아닌 인증 설정으로 전달합니다.\n\n등록 직후 상태는 untested 입니다. 에이전트에 연결하려면 먼저 연결 테스트를 통과해야 합니다.",
+        "tags": [
+          "Agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "url"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "example": "예약 CRM"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "description": "https 전용. 포트는 생략하거나 443. 사설/내부 주소는 등록할 수 없습니다.",
+                    "example": "https://crm.example.com/mcp"
+                  },
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "streamable_http",
+                      "sse"
+                    ],
+                    "default": "streamable_http",
+                    "description": "sse 는 호환용 legacy 입니다.",
+                    "example": "streamable_http"
+                  },
+                  "authType": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "bearer",
+                      "api_key"
+                    ],
+                    "default": "none",
+                    "example": "bearer"
+                  },
+                  "headerName": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "authType=api_key 일 때만 사용합니다. Authorization·Host·Cookie 등 예약 헤더는 사용할 수 없습니다(Bearer 가 필요하면 authType=bearer 를 쓰세요).",
+                    "example": "X-Api-Key"
+                  },
+                  "secret": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "authType 이 none 이 아닐 때 필수. 저장 시 암호화되며 **다시 조회할 수 없습니다**.",
+                    "example": "sk-live-0123456789"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "등록 성공(연결 테스트 전이므로 status=untested)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "url/인증 입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/mcp-connections/{connectionId}": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        },
+        {
+          "name": "connectionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MCP 연결 ID"
+        }
+      ],
+      "get": {
+        "operationId": "getMcpConnection",
+        "summary": "외부 MCP 연결 조회",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "조회 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMcpConnection",
+        "summary": "외부 MCP 연결 수정",
+        "description": "이름과 활성화 여부, 접속 정보를 수정합니다.\n\n**url 또는 transport 를 바꾸면** 기존 도구 목록을 폐기하고 status 가 untested 로 돌아갑니다. 다른 서버를 가리키게 된 연결이 옛 도구 목록으로 통화에 사용되지 않도록 하기 위해서입니다. 에이전트 연결(binding)은 유지되며, 연결 테스트를 다시 통과하면 그대로 다시 동작합니다.",
+        "tags": [
+          "Agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "example": "예약 CRM(운영)"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "example": "https://crm.example.com/mcp"
+                  },
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "streamable_http",
+                      "sse"
+                    ],
+                    "example": "streamable_http"
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "false 로 두면 통화에서 사용되지 않습니다.",
+                    "example": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMcpConnection",
+        "summary": "외부 MCP 연결 삭제",
+        "description": "연결을 삭제하고 이 연결을 쓰던 모든 에이전트에서 즉시 제거합니다. 응답의 affectedAgents 로 영향받은 에이전트를 확인할 수 있습니다.",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "삭제 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "deleted",
+                    "affectedAgents"
+                  ],
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "affectedAgents": {
+                      "type": "array",
+                      "description": "이 연결을 사용하고 있던 에이전트.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "agentId",
+                          "name"
+                        ],
+                        "properties": {
+                          "agentId": {
+                            "type": "string",
+                            "example": "clx0agent000000000000001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "예약 상담 에이전트"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/mcp-connections/{connectionId}/credential": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        },
+        {
+          "name": "connectionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MCP 연결 ID"
+        }
+      ],
+      "post": {
+        "operationId": "rotateMcpCredential",
+        "summary": "외부 MCP 연결 자격증명 교체",
+        "description": "자격증명을 교체합니다. 기본 동작은 **검증 후 교체**입니다 — 새 자격증명으로 실제 연결에 성공한 뒤에야 저장하므로, 잘못된 값으로 정상 연결을 덮어써 통화가 망가지는 일이 없습니다.\n\n러너에 접근할 수 없는 등 검증이 불가능한 상황에서는 force=true 로 검증 없이 저장할 수 있습니다. 이 경우 status 가 untested 가 되어 **통화에서는 사용되지 않으며**, 이후 연결 테스트를 통과해야 다시 사용됩니다.\n\n응답에는 자격증명이 포함되지 않습니다.",
+        "tags": [
+          "Agents"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "authType"
+                ],
+                "properties": {
+                  "authType": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "bearer",
+                      "api_key"
+                    ],
+                    "description": "none 으로 바꾸면 저장된 자격증명이 제거됩니다.",
+                    "example": "bearer"
+                  },
+                  "headerName": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "authType=api_key 일 때만 사용합니다.",
+                    "example": "X-Api-Key"
+                  },
+                  "secret": {
+                    "type": "string",
+                    "maxLength": 8192,
+                    "description": "authType 이 none 이 아닐 때 필수. 저장 후 다시 조회할 수 없습니다.",
+                    "example": "sk-live-9876543210"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "true 면 연결 검증 없이 저장합니다(복구용). status 가 untested 가 되어 통화에서 사용되지 않습니다.",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "교체 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "새 자격증명으로 MCP 서버 연결에 실패함(기존 자격증명은 그대로 유지됨)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "연결 검증을 수행할 수 없음(잠시 후 재시도하거나 force 사용)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/mcp-connections/{connectionId}/test": {
+      "parameters": [
+        {
+          "name": "accountId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "계정 ID"
+        },
+        {
+          "name": "connectionId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "MCP 연결 ID"
+        }
+      ],
+      "post": {
+        "operationId": "testMcpConnection",
+        "summary": "외부 MCP 연결 테스트",
+        "description": "실제 통화를 처리하는 런타임에서 MCP 서버에 접속해 도구 목록을 가져옵니다. 브라우저나 API 서버가 아니라 통화 런타임이 직접 연결하므로, 테스트 성공은 실제 통화에서도 같은 경로로 연결된다는 뜻입니다.\n\n성공하면 status 가 tested 가 되고 발견된 도구 목록이 저장됩니다. 에이전트에 연결하려면 이 테스트를 먼저 통과해야 합니다.",
+        "tags": [
+          "Agents"
+        ],
+        "responses": {
+          "200": {
+            "description": "연결 성공(도구 목록 갱신됨)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/McpConnection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "연결을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "서버가 노출한 도구가 너무 많음(최대 50개)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "MCP 서버 연결 실패. code 로 사유를 구분합니다 — URL_BLOCKED(차단된 주소), AUTH_FAILED(인증 실패), TIMEOUT, TLS_ERROR, PROTOCOL_ERROR.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "연결 테스트를 수행할 수 없음(잠시 후 재시도)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/accounts/{accountId}/calls": {
       "post": {
         "operationId": "createCall",
         "summary": "발신 전화 생성",
-        "description": "아웃바운드 전화를 발신합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\n**전화 발신**: To에 전화번호를 입력하면 일반 전화로 발신됩니다.\n- 예: `\"To\": \"01012345678\"`\n\n**매니지드 에이전트**: `AgentId`를 지정하면 콘솔에서 만든 AI 에이전트가 통화를 처리합니다.\n\n**Agent SDK**: `Url`, `AgentId`, `CallFlowId`를 모두 생략하면 From 번호에 연결된\nAgent SDK로 통화가 연결됩니다. Agent가 연결되어 있지 않으면 409 에러를 반환합니다.\n\n`Url`, `AgentId`, `CallFlowId`는 서로 배타적입니다. `201 Created`는 발신 요청이\n큐에 들어갔다는 뜻이며 통화 연결 성공을 뜻하지 않습니다. 반환된 `callId`를\n`GET /v1/accounts/{accountId}/calls/{callId}`로 조회해 최종 상태를 확인하세요.\n\n**AI Completion 모드는 종료되었습니다.** AI 필드를 포함한 요청은 410으로 거절됩니다.\nUrl(VoiceML), AgentId, CallFlowId 또는 Agent SDK를 사용하세요.",
+        "description": "아웃바운드 전화를 발신합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\n**전화 발신**: To에 전화번호를 입력하면 일반 전화로 발신됩니다.\n- 예: `\"To\": \"01012345678\"`\n\n**매니지드 에이전트**: `AgentId`를 지정하면 콘솔에서 만든 AI 에이전트가 통화를 처리합니다.\n이때 `CallContext`로 **이번 통화에만** 적용되는 요구사항(`Instruction`)과 참조 데이터\n(`Variables`)를 얹을 수 있습니다. 콘솔에 저장된 에이전트 설정은 바뀌지 않으므로 같은\n에이전트로 동시에 거는 다른 통화에는 영향이 없습니다. `AgentId` 모드 전용이라 다른\n모드와 함께 보내면 400으로 거절됩니다.\n\n**Agent SDK**: `Url`, `AgentId`, `CallFlowId`를 모두 생략하면 From 번호에 연결된\nAgent SDK로 통화가 연결됩니다. Agent가 연결되어 있지 않으면 409 에러를 반환합니다.\n\n`Url`, `AgentId`, `CallFlowId`는 서로 배타적입니다. `201 Created`는 발신 요청이\n큐에 들어갔다는 뜻이며 통화 연결 성공을 뜻하지 않습니다. 반환된 `callId`를\n`GET /v1/accounts/{accountId}/calls/{callId}`로 조회해 최종 상태를 확인하세요.\n\n**AI Completion 모드는 종료되었습니다.** AI 필드를 포함한 요청은 410으로 거절됩니다.\nUrl(VoiceML), AgentId, CallFlowId 또는 Agent SDK를 사용하세요.",
         "tags": [
           "Calls"
         ],
@@ -896,6 +2435,39 @@
                     "example": "cmagent123",
                     "description": "콘솔에서 만든 매니지드 에이전트 ID. Url·CallFlowId와 배타."
                   },
+                  "CallContext": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "AgentId 에이전트의 이번 통화에만 적용되는 컨텍스트.",
+                    "required": [
+                      "Instruction"
+                    ],
+                    "properties": {
+                      "Instruction": {
+                        "type": "string",
+                        "maxLength": 4000,
+                        "description": "이번 통화에서 수행할 실행 요구사항."
+                      },
+                      "Variables": {
+                        "type": "object",
+                        "maxProperties": 50,
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        "description": "요구사항에서 참조할 통화별 구조화 데이터."
+                      }
+                    }
+                  },
                   "CallFlowId": {
                     "type": "string",
                     "example": "cmryw3ycm000001s6on0kp9a8",
@@ -925,7 +2497,7 @@
                   "Timeout": {
                     "type": "integer",
                     "example": 60,
-                    "description": "발신 타임아웃 (초). 상대방이 응답하지 않을 때 대기 시간. 기본값: 60"
+                    "description": "벨 대기 시간 (초). 상대가 받지 않으면 이 시간 뒤 `no-answer` 로 종료됩니다. 미지정이거나 유효하지 않으면 30초, 600초를 넘으면 600초로 제한됩니다.\n"
                   },
                   "StatusCallback": {
                     "type": "string",
@@ -972,6 +2544,11 @@
                     "type": "string",
                     "description": "콘솔에서 만든 매니지드 에이전트 ID. Url·CallFlowId와 배타."
                   },
+                  "CallContext": {
+                    "type": "string",
+                    "example": "{\"Instruction\":\"예약 가능 여부를 확인한다\",\"Variables\":{\"preferredTime\":\"15:00\"}}",
+                    "description": "AgentId 에이전트의 이번 통화에만 적용되는 컨텍스트 JSON 객체 문자열."
+                  },
                   "CallFlowId": {
                     "type": "string",
                     "description": "콜 플로우(결정적 ARS) ID. Url·AgentId와 배타."
@@ -983,7 +2560,7 @@
                   },
                   "Timeout": {
                     "type": "integer",
-                    "description": "발신 타임아웃 (초). 기본값: 60"
+                    "description": "벨 대기 시간 (초). 미지정이거나 유효하지 않으면 30초, 600초를 넘으면 600초로 제한.\n"
                   },
                   "StatusCallback": {
                     "type": "string",
@@ -1078,7 +2655,7 @@
             }
           },
           "422": {
-            "description": "통화 분 할당량 초과, 발신 미지원 플랜 또는 AMD 애드온 비활성",
+            "description": "통화 분 할당량 초과, 발신 미지원 플랜, AMD 애드온 비활성, 또는 수신거부 명단에 등록된 번호 (`recipient_blocked`). 수신거부로 막힌 경우 통화기록에 `hangup_cause=recipient_blocked` 로 남아 나중에 몇 건이 걸러졌는지 확인할 수 있습니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1108,7 +2685,7 @@
             }
           },
           "503": {
-            "description": "ARI 서비스 준비 안 됨",
+            "description": "발신을 처리할 콜 노드가 일시적으로 준비되지 않음 (`code: ARI_NOT_READY` / `service_unavailable`). 재시도 가능.\n",
             "content": {
               "application/json": {
                 "schema": {
@@ -1147,10 +2724,14 @@
                 "ringing",
                 "in-progress",
                 "completed",
-                "failed"
+                "busy",
+                "no-answer",
+                "failed",
+                "canceled",
+                "rejected"
               ]
             },
-            "description": "통화 상태로 필터링",
+            "description": "통화 상태로 필터링. 실패 사유를 더 세분해 조회하려면 `hangupCause` 를 사용하세요.\n",
             "example": "completed"
           },
           {
@@ -1232,6 +2813,76 @@
             "example": "07012345678"
           },
           {
+            "name": "since",
+            "in": "query",
+            "allowReserved": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "이 시각 **이후**(포함) 시작된 통화만. ISO 8601.",
+            "example": "2026-08-01T00:00:00Z"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "allowReserved": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "이 시각 **이전**(미포함) 시작된 통화만. ISO 8601. `since` 와 함께 쓰면 구간이 겹치지 않게 이어붙일 수 있습니다.\n",
+            "example": "2026-09-01T00:00:00Z"
+          },
+          {
+            "name": "minDuration",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "description": "통화 시간(초) 하한. 이 값 **포함**.",
+            "example": 10
+          },
+          {
+            "name": "maxDuration",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "description": "통화 시간(초) 상한. 이 값 **포함**. `minDuration=0&maxDuration=0` 이면 0초 통화만.",
+            "example": 60
+          },
+          {
+            "name": "hangupCause",
+            "in": "query",
+            "style": "form",
+            "explode": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "example": "concurrency_limit_exceeded"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "example": [
+                    "concurrency_limit_exceeded",
+                    "invalid_number"
+                  ]
+                }
+              ]
+            },
+            "description": "종료 사유로 필터링. `status` 가 실패를 한 덩어리로 묶는 것과 달리 **왜** 끝났는지로 가릅니다 — 채널 초과(`concurrency_limit_exceeded`)·결번(`invalid_number`)· ClawOps 오류(`app_error`) 등. 전체 목록은 [통화 실패 사유](/docs/call-failure-causes). 단일 값 또는 배열.\n",
+            "example": "concurrency_limit_exceeded"
+          },
+          {
             "name": "pageSize",
             "in": "query",
             "schema": {
@@ -1241,6 +2892,28 @@
             },
             "description": "페이지당 항목 수 (최대 100)",
             "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
           },
           {
             "name": "page",
@@ -1373,7 +3046,7 @@
       "post": {
         "operationId": "updateCall",
         "summary": "통화 제어 (종료)",
-        "description": "진행 중인 통화를 종료합니다. 현재 Status=completed만 지원합니다.",
+        "description": "진행 중인 통화를 종료합니다. 현재 Status=completed만 지원합니다.\n\n벨이 울리는 중(queued/ringing)에도 호출할 수 있고, 이때는 통화가 연결되기 전에 취소됩니다.\n\n**200 이 아니면 취소되지 않은 것입니다.** 실패는 조용히 성공으로 처리되지 않으니 상태 코드를 확인하고, 503(일시적)은 재시도하세요.\n",
         "tags": [
           "Calls"
         ],
@@ -1465,6 +3138,247 @@
           },
           "404": {
             "description": "콜을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "종료할 수 있는 통화가 아님 (`code: hangup_not_applicable`) — 통화를 처리 중인 콜 노드가 해당 통화를 모르는 상태. 응답에 현재 `status` 가 함께 실립니다.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Error"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "callId": {
+                          "type": "string",
+                          "description": "대상 통화 ID",
+                          "example": "CA1234567890abcdef"
+                        },
+                        "status": {
+                          "type": "string",
+                          "description": "되읽은 현재 통화 상태 (종료되지 않았음)",
+                          "example": "ringing"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "통화 처리 계층에서 종료 실패 (`code: hangup_failed`). 재시도 가능.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "통화를 처리 중인 콜 노드를 일시적으로 찾을 수 없거나 준비되지 않음 (`code: CALL_NODE_UNAVAILABLE` / `ARI_NOT_READY` / `hangup_unavailable`). 재시도 가능.\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/calls/{callId}/actions/play": {
+      "post": {
+        "operationId": "playIntoCall",
+        "summary": "통화 중 안내 재생",
+        "description": "진행 중인 통화에 안내 음성을 넣습니다. `<Dial>` 로 **연결된 통화**에만 사용할 수 있으며, 통화를 끊지 않고 오디오만 얹습니다.\n\n`text` 를 주면 그 문장을 읽어 주고, `url` 을 주면 그 오디오 파일을 재생합니다 (둘 중 하나만 지정). 재생 대상은 `target` 으로 고릅니다 — 기본값은 양쪽 모두입니다.\n\n**접수만 하고 즉시 202 로 응답합니다.** 재생이 끝날 때까지 기다리지 않습니다.\n\n아직 연결되지 않았거나(벨 울리는 중) 이미 끝난 통화, 앞선 안내가 재생 중인 통화는 409 로 거절됩니다.\n",
+        "tags": [
+          "Calls"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "통화 ID",
+            "example": "CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "읽어 줄 문장. `url` 과 함께 쓸 수 없습니다.",
+                    "example": "잔액이 5분 남았습니다."
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "재생할 오디오 파일 URL (mp3/wav). `text` 와 함께 쓸 수 없습니다.",
+                    "example": "https://example.com/notice.mp3"
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "ko",
+                      "en",
+                      "ja"
+                    ],
+                    "default": "ko",
+                    "description": "`text` 를 읽을 언어. 기본값: ko",
+                    "example": "ko"
+                  },
+                  "voice": {
+                    "type": "string",
+                    "description": "`text` 를 읽을 음성. VoiceML `<Say>` 의 `voice` 와 같은 형식입니다 — 생략하면 무료 기본 음성으로 읽고(요금 없음), `cartesia` 또는 `cartesia:<음성 ID>` 를 지정하면 고품질 음성으로 읽으며 읽은 글자 수만큼 과금됩니다. 통화 중 다른 안내와 음색을 맞추려면 `<Say>` 에 쓴 값과 같은 값을 주세요.\n",
+                    "example": "cartesia:4dd4630e-19e0-4243-bca0-676ff85119b7"
+                  },
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "both",
+                      "caller",
+                      "callee"
+                    ],
+                    "default": "both",
+                    "description": "재생 대상. both=양쪽 모두 / caller=발신자만 / callee=연결된 상대만. 기본값: both\n",
+                    "example": "both"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "재생 접수됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "callId": {
+                      "type": "string",
+                      "description": "대상 통화 ID",
+                      "example": "CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6"
+                    },
+                    "playbackId": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "재생 식별자",
+                      "example": "b8f1c2d3-4e5f-6789-abcd-ef0123456789"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "처리 상태",
+                      "example": "playing"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "text/url 을 둘 다 주었거나 둘 다 없음, 또는 target 값이 올바르지 않음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "콜을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "재생할 수 있는 상태가 아님 — 아직 `<Dial>` 로 연결되지 않았거나 이미 종료된 통화 (`code: CALL_NOT_CONNECTED`), 또는 앞선 안내가 재생 중 (`code: PLAY_IN_PROGRESS`).\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "재생할 음원을 준비하지 못함 (`code: MEDIA_UNAVAILABLE`) — URL 접근 실패나 변환 실패.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "통화 처리 계층에서 재생 실패 (`code: play_failed`). 재시도 가능.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "통화를 처리 중인 콜 노드를 일시적으로 찾을 수 없거나 준비되지 않음 (`code: CALL_NODE_UNAVAILABLE` / `ARI_NOT_READY` / `play_unavailable`). 재시도 가능.\n",
             "content": {
               "application/json": {
                 "schema": {
@@ -1585,10 +3499,8 @@
                             "properties": {
                               "speaker": {
                                 "type": "string",
-                                "enum": [
-                                  "CUSTOMER",
-                                  "AGENT"
-                                ]
+                                "description": "화자 식별자. 2026-08 이후 전사는 `speaker_0`, `speaker_1`, … 형식이며\n전환(transfer) 통화처럼 참여자가 셋 이상이면 그만큼 늘어납니다.\n그 이전 전사는 `AGENT` / `CUSTOMER` 값이 그대로 남아 있으므로 두 형식을\n모두 처리해야 합니다. 화자와 역할(AI/상담원/고객)의 연결은 보장하지 않습니다.\n",
+                                "example": "speaker_0"
                               },
                               "start": {
                                 "type": "number"
@@ -1630,15 +3542,21 @@
                         },
                         "stage": {
                           "type": "string",
+                          "description": "실패가 발생한 단계.",
                           "enum": [
                             "download",
                             "runtime",
-                            "trigger"
+                            "transcription",
+                            "trigger",
+                            "recover",
+                            "audio"
                           ],
                           "nullable": true
                         },
                         "error": {
                           "type": "string",
+                          "description": "실패 사유 **코드**. 고객이 읽고 행동할 수 있는 값만 내보내며, 엔진·벤더의 원본 오류 문구는 포함하지 않습니다. 현재 값: `transcription_failed`(전사 실패), `no_recording`(녹음 없음), `no_audio`(녹음은 있으나 음성 데이터가 비어 있음). `no_recording`·`no_audio` 는 **재요청해도 결과가 같습니다**.",
+                          "example": "transcription_failed",
                           "nullable": true
                         }
                       }
@@ -1704,7 +3622,7 @@
       "post": {
         "operationId": "requestTranscript",
         "summary": "통화 전사 명시 요청",
-        "description": "조직 설정 \"통화 받아쓰기\"가 꺼져 있어도 특정 통화 1 건에 한해 전사를 실행합니다. 재실행 금지 — 이미 요청된 통화는 409 를 반환합니다. 시스템 레벨 트리거 실패(stage=trigger)만 재시도가 허용됩니다. 전사된 오디오 길이만큼 사용량 기반으로 과금됩니다. Request body 없음.",
+        "description": "조직 설정 \"통화 받아쓰기\"가 꺼져 있어도 특정 통화 1 건에 한해 전사를 실행합니다. Request body 없음.\n\n**실패한 전사는 재요청할 수 있습니다.** 접수되면 202 와 함께 대기열에 등록되며, 고객 요청 건이라 내부 처리보다 먼저 실행됩니다. 이미 제공됐거나(completed) 처리 중인(pending) 통화만 409 를 반환합니다.\n\n전사된 오디오 길이만큼 사용량 기반으로 과금됩니다. 다만 이미 전사가 끝난 통화를 요청한 경우에는 재전사 없이 결과만 제공되므로 **추가 과금이 발생하지 않습니다.**",
         "tags": [
           "Calls"
         ],
@@ -1730,7 +3648,7 @@
         ],
         "responses": {
           "202": {
-            "description": "전사 Job 트리거됨",
+            "description": "전사 요청 접수 — 대기열에 등록되어 곧 처리됩니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1795,7 +3713,7 @@
             }
           },
           "409": {
-            "description": "이미 요청됨 — 현재 상태를 구조화해 반환. completed/pending 은 error 필드에 \"이미 전사가 요청되었습니다\" 가 들어가고, failed 는 GET 응답과 동일 shape(status/stage/error) 로 실제 실패 사유가 error 에 전달됩니다.",
+            "description": "재요청을 접수할 수 없는 상태 — 현재 상태를 구조화해 반환합니다. `completed`(이미 제공됨)·`pending`(처리 중)이면 error 필드에 \"이미 전사가 요청되었습니다\" 가 들어갑니다. 같은 통화가 반복해서 실패해 재시도 한도를 넘긴 경우에는 `failed` 와 사유 코드가 함께 전달되며, 이때는 지원팀으로 문의해 주세요. ⚠️ **실패한 전사 자체는 재요청 가능합니다**(202) — 이 응답은 위 예외 상황만 나타냅니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1806,7 +3724,7 @@
                   "properties": {
                     "error": {
                       "type": "string",
-                      "description": "completed/pending: \"이미 전사가 요청되었습니다\". failed: 원래 실패 사유."
+                      "description": "completed/pending 이면 \"이미 전사가 요청되었습니다\". failed 이면 GET 과 동일한 실패 사유 **코드**(`transcription_failed` 등). 엔진·벤더의 원본 오류 문구는 포함하지 않습니다."
                     },
                     "status": {
                       "type": "string",
@@ -1826,7 +3744,10 @@
                       "enum": [
                         "download",
                         "runtime",
-                        "trigger"
+                        "transcription",
+                        "trigger",
+                        "recover",
+                        "audio"
                       ],
                       "nullable": true
                     }
@@ -1835,18 +3756,8 @@
               }
             }
           },
-          "502": {
-            "description": "전사 Job 트리거 실패 (call-engine 호출 오류)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "전사 기능이 서버에 구성되지 않음",
+          "500": {
+            "description": "요청 접수 중 서버 오류",
             "content": {
               "application/json": {
                 "schema": {
@@ -2362,8 +4273,8 @@
                   "statusCallbackEvents": {
                     "type": "string",
                     "nullable": true,
-                    "example": "ringing answered completed",
-                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 기본 전체(ringing answered completed)."
+                    "example": "initiated ringing answered completed transfer",
+                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
                   }
                 }
               }
@@ -2535,7 +4446,13 @@
                     "type": "string",
                     "nullable": true,
                     "example": "https://my-app.com/voice",
-                    "description": "수신 전화 처리용 Webhook URL"
+                    "description": "routingType='webhook'에서 수신 전화를 처리할 VoiceML Webhook URL"
+                  },
+                  "callContextUrl": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "https://api.example.com/integrations/clawops/call-context",
+                    "description": "routingType='agent'에서 Managed Agent 시작 직전에 통화별 CallContext를 조회할 동기 endpoint. 응답은 {\"CallContext\":{\"Instruction\":\"...\",\"Variables\":{...}}} 형식이며, 조회 실패 시 저장된 Agent 설정만으로 통화를 계속합니다."
                   },
                   "webhookMethod": {
                     "type": "string",
@@ -2602,8 +4519,8 @@
                   "statusCallbackEvents": {
                     "type": "string",
                     "nullable": true,
-                    "example": "ringing answered completed",
-                    "description": "구독할 상태 이벤트(공백 구분). 미지정 시 기본 전체."
+                    "example": "initiated ringing answered completed transfer",
+                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
                   },
                   "dictionaryId": {
                     "type": "string",
@@ -2892,7 +4809,7 @@
                 "properties": {
                   "To": {
                     "type": "string",
-                    "description": "수신 번호",
+                    "description": "수신 번호. 국내 표기(`010-1234-5678`·`01012345678`)와 `+82` E.164 를 모두 받아 국내 표기로 정규화해 저장합니다. 국내 이동전화·지역번호·050X 안심번호·대표번호 (`1[5-9]XX-XXXX`)만 지원하며, 그 밖의 값(앞 0 이 빠진 `1012345678`, `+` 없는 `8210…`, 폐지된 015·018 등)은 `400 invalid_phone` 입니다.",
                     "example": "01012345678"
                   },
                   "From": {
@@ -2969,7 +4886,7 @@
             }
           },
           "403": {
-            "description": "접근 권한 없음 또는 활성 구독 없음",
+            "description": "접근 권한 없음, 활성 구독 없음, 또는 발송이 제한된 계정",
             "content": {
               "application/json": {
                 "schema": {
@@ -2979,7 +4896,7 @@
             }
           },
           "422": {
-            "description": "SMS 할당량 초과",
+            "description": "할당량 초과, 플랜 미지원 타입, 또는 수신거부 명단에 등록된 번호 (`recipient_blocked`). 수신거부로 막힌 문자는 메시지 이력에 남지 않습니다 — 발송 자체가 일어나지 않기 때문입니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3038,6 +4955,15 @@
             "example": "sent"
           },
           {
+            "name": "number",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "발신 또는 수신 번호 필터. 하이픈 유무를 모두 매칭합니다.",
+            "example": "07052358010"
+          },
+          {
             "name": "pageSize",
             "in": "query",
             "schema": {
@@ -3047,6 +4973,28 @@
             },
             "description": "페이지당 항목 수",
             "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
           },
           {
             "name": "page",
@@ -3265,7 +5213,8 @@
                         "recording.failed",
                         "agent.disconnected",
                         "agent.connected",
-                        "callflow.ended"
+                        "callflow.ended",
+                        "assignment.completed"
                       ]
                     },
                     "description": "구독할 이벤트 목록",
@@ -3429,7 +5378,8 @@
                         "recording.failed",
                         "agent.disconnected",
                         "agent.connected",
-                        "callflow.ended"
+                        "callflow.ended",
+                        "assignment.completed"
                       ]
                     }
                   },
@@ -3590,6 +5540,28 @@
             },
             "description": "페이지당 항목 수 (최대 100)",
             "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
           }
         ],
         "responses": {
@@ -3869,6 +5841,28 @@
             "example": 20
           },
           {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          },
+          {
             "name": "page",
             "in": "query",
             "schema": {
@@ -4079,7 +6073,7 @@
       "get": {
         "operationId": "listCallFlows",
         "summary": "콜 플로우 목록 조회",
-        "description": "계정의 콜 플로우(결정적 ARS) 목록을 최신순으로 반환합니다.\n\n여기서 얻은 `callFlowId`를 다음 두 곳에 사용합니다.\n- **발신**: `POST /v1/accounts/{accountId}/calls`의 `CallFlowId`\n- **착신**: `PATCH /v1/accounts/{accountId}/numbers/{number}`의 `routingType=callflow` + `callFlowId`\n\n플로우의 블럭 구성(그래프)은 반환하지 않습니다. 플로우 편집은 콘솔 빌더에서 합니다.",
+        "description": "계정의 콜 플로우(결정적 ARS) 목록을 최신순으로 반환합니다.\n\n여기서 얻은 `callFlowId`를 다음 두 곳에 사용합니다.\n- **발신**: `POST /v1/accounts/{accountId}/calls`의 `CallFlowId`\n- **착신**: `PATCH /v1/accounts/{accountId}/numbers/{number}`의 `routingType=callflow` + `callFlowId`\n\n플로우의 블럭 구성(그래프)은 반환하지 않습니다 — 플로우 하나가 수십 KB라 목록에 싣지\n않습니다. 그래프가 필요하면 단건 조회(`GET .../call-flows/{callFlowId}`)를 씁니다.",
         "tags": [
           "CallFlows"
         ],
@@ -4125,13 +6119,152 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "createCallFlow",
+        "summary": "콜 플로우 생성",
+        "description": "콜 플로우(결정적 ARS)를 새로 만듭니다. 콘솔 빌더가 저장하는 것과 **같은 그래프 포맷**이라,\n여기서 만든 플로우는 콘솔에서 그대로 열리고 편집됩니다(좌표는 자동 배치됩니다).\n\n검증은 두 단계입니다.\n\n1. 구조 — 블럭 타입·필드·값 범위. 스키마에 없는 필드는 거절합니다(오타 방어).\n2. 참조 — `next` 류가 가리키는 블럭이 실재하는지, 시작 블럭이 있는지.\n\n실패하면 400과 함께 `issues[]`에 **필드 단위 사유**가 실립니다.\n\n만든 플로우의 `callFlowId`는 발신(`POST /v1/accounts/{accountId}/calls`의 `CallFlowId`)과\n착신(`PATCH /v1/accounts/{accountId}/numbers/{number}`의 `routingType=callflow`)에 그대로 씁니다.",
+        "tags": [
+          "CallFlows"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "graph"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "description": "플로우 이름(콘솔 목록에 보이는 이름)",
+                    "example": "고객센터 ARS"
+                  },
+                  "graph": {
+                    "$ref": "#/components/schemas/CallFlowGraphInput"
+                  }
+                }
+              },
+              "example": {
+                "name": "동의 확인 ARS",
+                "graph": {
+                  "version": 1,
+                  "start": "ask",
+                  "nodes": {
+                    "ask": {
+                      "type": "menu",
+                      "prompt": "안내에 동의하시면 1번, 거부하시면 2번을 눌러주세요.",
+                      "branches": {
+                        "1": "agreed",
+                        "2": "declined"
+                      },
+                      "invalidNext": null,
+                      "timeoutNext": "noInput",
+                      "saveAs": "consent"
+                    },
+                    "agreed": {
+                      "type": "hangup",
+                      "message": "동의해 주셔서 감사합니다."
+                    },
+                    "declined": {
+                      "type": "hangup",
+                      "message": "확인했습니다. 감사합니다."
+                    },
+                    "noInput": {
+                      "type": "hangup",
+                      "message": "입력이 없어 통화를 종료합니다."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "생성 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패. `code` 는 `validation`(이름) · `call_flow_invalid_graph`(그래프, `issues[]` 동반) · `call_flow_graph_too_large`(256KB 초과)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "다른 조직이 등록한 복제 음성 사용 (`call_flow_voice_forbidden`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "계정당 개수 상한(200개) 초과 (`call_flow_limit_reached`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "요청 본문이 너무 큼 (`payload_too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/accounts/{accountId}/call-flows/{callFlowId}": {
       "get": {
         "operationId": "getCallFlow",
         "summary": "콜 플로우 단건 조회",
-        "description": "콜 플로우 하나의 정보를 반환합니다. 계정이 소유하지 않은 ID는 404입니다.\n\n플로우의 블럭 구성(그래프)은 반환하지 않습니다.",
+        "description": "콜 플로우 하나의 정보를 반환합니다. 계정이 소유하지 않은 ID는 404입니다.\n\n목록과 달리 **블럭 구성(`graph`)을 함께** 반환합니다. 이 값을 그대로 고쳐 `PUT`/`PATCH`로\n돌려보내는 왕복 편집이 성립합니다.",
         "tags": [
           "CallFlows"
         ],
@@ -4163,7 +6296,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CallFlowResponse"
+                  "$ref": "#/components/schemas/CallFlowDetailResponse"
                 }
               }
             }
@@ -4189,13 +6322,342 @@
             }
           }
         }
+      },
+      "put": {
+        "operationId": "replaceCallFlow",
+        "summary": "콜 플로우 전체 교체",
+        "description": "플로우를 통째로 바꿉니다. `name`·`graph` 둘 다 필수이고, 보낸 그래프가 저장된 그래프를\n**완전히 대체**합니다.\n\n콘솔 빌더가 잡아 둔 캔버스 좌표는 **버려집니다**(REST의 PUT 의미 그대로). 좌표가 없어도\n콘솔 에디터가 자동 배치로 받아주므로 화면이 깨지지는 않습니다. 좌표를 지키려면 `PATCH`를 쓰세요.\n\n검증과 에러 형태는 생성(POST)과 같습니다.",
+        "tags": [
+          "CallFlows"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "callFlowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "콜 플로우 ID",
+            "example": "cmryw3ycm000001s6on0kp9a8"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "graph"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "description": "플로우 이름",
+                    "example": "고객센터 ARS"
+                  },
+                  "graph": {
+                    "$ref": "#/components/schemas/CallFlowGraphInput"
+                  }
+                }
+              },
+              "example": {
+                "name": "동의 확인 ARS (문구 수정)",
+                "graph": {
+                  "version": 1,
+                  "start": "ask",
+                  "nodes": {
+                    "ask": {
+                      "type": "menu",
+                      "prompt": "안내에 동의하시면 1번, 거부하시면 2번을 눌러주세요.",
+                      "branches": {
+                        "1": "agreed",
+                        "2": "declined"
+                      },
+                      "invalidNext": null,
+                      "timeoutNext": "noInput",
+                      "saveAs": "consent"
+                    },
+                    "agreed": {
+                      "type": "hangup",
+                      "message": "동의해 주셔서 감사합니다."
+                    },
+                    "declined": {
+                      "type": "hangup",
+                      "message": "확인했습니다. 감사합니다."
+                    },
+                    "noInput": {
+                      "type": "hangup",
+                      "message": "입력이 없어 통화를 종료합니다."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "교체 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패. `code` 는 `validation` · `call_flow_invalid_graph`(`issues[]` 동반) · `call_flow_graph_too_large`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "다른 조직이 등록한 복제 음성 사용 (`call_flow_voice_forbidden`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "콜 플로우 없음 (`call_flow_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "요청 본문이 너무 큼 (`payload_too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCallFlow",
+        "summary": "콜 플로우 부분 수정",
+        "description": "준 필드만 바꿉니다. `name`·`graph` 중 최소 하나는 있어야 하고, 둘 다 없으면 400입니다.\n\n`graph`를 줄 때는 콘솔 빌더가 잡아 둔 캔버스 좌표를 **보존**합니다 — 공개 계약에 좌표가\n없어 API로는 보낼 수 없는데, 그대로 덮으면 콘솔에서 잡아 둔 배치가 매 요청마다 날아가기\n때문입니다. (좌표까지 초기화하려면 `PUT`을 쓰세요.)\n\n`graph`는 부분 그래프가 아니라 **완결된 그래프 하나**여야 합니다 — 블럭 하나만 보내는\n병합은 지원하지 않습니다.",
+        "tags": [
+          "CallFlows"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "callFlowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "콜 플로우 ID",
+            "example": "cmryw3ycm000001s6on0kp9a8"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "minProperties": 1,
+                "description": "`name`·`graph` 중 최소 하나",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "description": "플로우 이름",
+                    "example": "고객센터 ARS (개편)"
+                  },
+                  "graph": {
+                    "$ref": "#/components/schemas/CallFlowGraphInput"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패. `code` 는 `validation`(빈 요청·이름) · `call_flow_invalid_graph`(`issues[]` 동반) · `call_flow_graph_too_large`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallFlowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "다른 조직이 등록한 복제 음성 사용 (`call_flow_voice_forbidden`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "콜 플로우 없음 (`call_flow_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "요청 본문이 너무 큼 (`payload_too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCallFlow",
+        "summary": "콜 플로우 삭제",
+        "description": "콜 플로우를 삭제합니다. 성공하면 204(본문 없음)입니다.\n\n이 플로우를 **착신에 쓰는 번호**(`routingType=callflow`)가 하나라도 있으면 409로 거절합니다.\n먼저 해당 번호의 라우팅을 다른 곳으로 바꾼 뒤 삭제하세요.",
+        "tags": [
+          "CallFlows"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "callFlowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "콜 플로우 ID",
+            "example": "cmryw3ycm000001s6on0kp9a8"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "삭제 성공 (본문 없음)"
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "콜 플로우 없음 (`call_flow_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "착신에 사용 중인 번호가 있어 삭제 불가 (`call_flow_in_use`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/accounts/{accountId}/call-batches": {
       "post": {
         "operationId": "createCallBatch",
         "summary": "배치 발신(캠페인) 생성",
-        "description": "명단에 자동으로 전화를 거는 배치를 만듭니다. 생성 즉시 반환되며, 실제 발신은\n동시 통화 한도·분당 발신 속도·발신 가능 시간대를 지켜가며 순차적으로 진행됩니다.\n\n**대상은 `CallFlowId` · `AgentId` · `Url` 중 정확히 하나**를 지정합니다 (발신 API와 동일).\n\n수신자별로 다른 값을 쓰려면 `Tasks[].Variables`에 넣습니다. 콜 플로우에서\n`{{변수명}}`으로 참조합니다. 변수 **이름**은 영문/숫자/밑줄만 가능합니다(값은 한글 가능).\n\n**발신 가능 시간대**: 광고성 전화는 21시~익일 8시 발신이 법으로 금지되어 있어\n이 시간에는 `Windows` 설정과 무관하게 발신되지 않습니다. `Windows`는 그보다\n**더 좁게** 제한할 때 사용합니다.\n\n배치 발신은 계정별로 활성화가 필요합니다.",
+        "description": "명단에 자동으로 전화를 거는 배치를 만듭니다. 생성 즉시 반환되며, 실제 발신은\n동시 통화 한도·분당 발신 속도·발신 가능 시간대를 지켜가며 순차적으로 진행됩니다.\n\n**대상은 `CallFlowId` · `AgentId` · `Url` 중 정확히 하나**를 지정합니다 (발신 API와 동일).\n\n수신자별로 다른 값을 쓰려면 `Tasks[].Variables`에 넣습니다. 콜 플로우에서\n`{{변수명}}`으로 참조합니다. 변수 **이름**은 영문/숫자/밑줄만 가능합니다(값은 한글 가능).\n\n**발신 차수(`Rounds`)**: 몇 번 걸지, 얼마 간격으로 걸지, **각 차수를 언제 걸지**를\n한 배열로 정합니다. 배열 인덱스가 곧 차수라 `Rounds[0]`이 1차 발신이고 그 뒤가 재시도입니다.\n차수마다 시간대를 따로 줄 수 있어 \"1차는 낮에, 안 받으면 2·3차는 저녁에\" 같은 진행이 됩니다.\n\n**발신 가능 시간대**: 광고성 전화는 21시~익일 8시 발신이 법으로 금지되어 있어\n이 시간에는 `Rounds[].Windows` 설정과 무관하게 발신되지 않습니다. `Windows`는 그보다\n**더 좁게** 제한할 때 사용합니다.\n\n배치 발신은 계정별로 활성화가 필요합니다.",
         "tags": [
           "CallBatches"
         ],
@@ -4220,30 +6682,64 @@
                 "CallFlowId": "cf_9a8b7c6d",
                 "MaxConcurrency": 3,
                 "PacingPerMinute": 20,
-                "Windows": [
+                "MachineDetection": "Enable",
+                "Rounds": [
                   {
-                    "days": [
-                      1,
-                      2,
-                      3,
-                      4,
-                      5
+                    "Windows": [
+                      {
+                        "Days": [
+                          1,
+                          2,
+                          3,
+                          4,
+                          5
+                        ],
+                        "Start": "10:00",
+                        "End": "18:00"
+                      }
+                    ]
+                  },
+                  {
+                    "After": 30,
+                    "On": [
+                      "no-answer",
+                      "busy"
                     ],
-                    "start": "09:00",
-                    "end": "18:00"
+                    "Windows": [
+                      {
+                        "Days": [
+                          1,
+                          2,
+                          3,
+                          4,
+                          5
+                        ],
+                        "Start": "18:00",
+                        "End": "21:00"
+                      }
+                    ]
+                  },
+                  {
+                    "After": 45,
+                    "On": [
+                      "no-answer",
+                      "busy"
+                    ],
+                    "Windows": [
+                      {
+                        "Days": [
+                          1,
+                          2,
+                          3,
+                          4,
+                          5
+                        ],
+                        "Start": "18:00",
+                        "End": "21:00"
+                      }
+                    ]
                   }
                 ],
-                "MachineDetection": "Enable",
-                "RetryPolicy": {
-                  "DelaysMinutes": [
-                    30,
-                    180
-                  ],
-                  "RetryOn": [
-                    "no-answer",
-                    "busy"
-                  ]
-                },
                 "MessagePolicy": {
                   "OnFinalFail": {
                     "Body": "{{customer_name}}님, {{visit_date}} 예약 확인차 전화드렸는데 연결이 어려워 문자 남깁니다."
@@ -4339,52 +6835,132 @@
                     "description": "자동응답기(음성사서함) 감지. 기본값 None(사용 안 함). `Enable` 은 감지만 해서 결과의 `answeredBy` 에 human·machine·unknown 을 남기고 통화는 그대로 진행합니다. `Hangup` 은 자동응답기로 판정되면 통화를 끊습니다. **AMD 애드온이 활성화된 계정만** 쓸 수 있고(없으면 422), 감지한 통화마다 요금이 붙습니다.\n애드온 활성 여부는 **발신할 때마다** 다시 확인합니다 — 배치를 만든 뒤 애드온을 해지하면 남은 통화는 감지 없이 걸립니다(배치가 실패하지는 않습니다).",
                     "example": "Enable"
                   },
-                  "RetryPolicy": {
-                    "type": "object",
-                    "description": "통화가 안 됐을 때 다시 거는 정책. 생략하면 **한 번 걸고 끝**입니다. 재시도도 최초 발신과 똑같이 동시통화 한도·분당 상한·발신 가능 시간대의 적용을 받습니다 — 예를 들어 20시 50분에 실패한 통화의 \"30분 뒤\" 재시도는 금지 시간대(21~08시)에 걸려 다음 날 아침으로 밀립니다.",
-                    "required": [
-                      "DelaysMinutes",
-                      "RetryOn"
-                    ],
-                    "properties": {
-                      "DelaysMinutes": {
-                        "type": "array",
-                        "description": "각 재시도까지 기다릴 시간(분). **배열 길이가 곧 재시도 횟수**입니다 — `[30, 180]` 이면 30분 뒤에 2차, 그로부터 3시간 뒤에 3차까지 총 3번 겁니다. 항목당 1~1440(하루), 최대 5개.",
-                        "items": {
-                          "type": "integer"
-                        },
-                        "example": [
-                          30,
-                          180
+                  "Rounds": {
+                    "type": "array",
+                    "description": "발신 차수. **배열 인덱스가 곧 차수**이고 `Rounds[0]` 이 1차 발신, 그 뒤가 재시도입니다. 생략하면 **한 번 걸고 끝**(발신 가능 시간대 전체)입니다. 최대 5개.\n차수마다 시간대를 따로 줄 수 있는 것이 핵심입니다 — \"1차는 낮(10~18시)에 걸고, 안 받으면 2·3차는 받을 확률이 높은 저녁(18~21시)에\" 같은 진행을 한 배치로 표현합니다.\n재시도도 최초 발신과 똑같이 동시통화 한도·분당 상한·발신 가능 시간대의 적용을 받습니다. 정책상의 시각이 그 차수의 시간대 밖이면 **시간대가 열릴 때까지 기다렸다가** 걸립니다 — 20시 50분에 실패한 통화의 \"30분 뒤\"는 21시 20분이지만 그 시각은 발신 금지라 실제로는 다음 열리는 시각에 걸립니다.",
+                    "maxItems": 5,
+                    "example": [
+                      {
+                        "Windows": [
+                          {
+                            "Days": [
+                              1,
+                              2,
+                              3,
+                              4,
+                              5
+                            ],
+                            "Start": "10:00",
+                            "End": "18:00"
+                          }
                         ]
                       },
-                      "RetryOn": {
-                        "type": "array",
-                        "description": "다시 걸 통화 결과. `no-answer`(안 받음) · `busy`(통화 중) · `rejected`(거절/차단) · `failed`(발신 실패) · `machine`(자동응답기 판정).\n`machine` 은 `MachineDetection` 을 함께 켠 배치에서만 동작합니다. 감지를 끈 채로 넣으면 거절되지는 않지만 **아무 일도 일어나지 않습니다** — 판정값(`answeredBy`)이 아예 없어 맞출 대상이 없기 때문입니다.\n켜더라도 신중히 고르세요 — 한국어 자동응답기 감지는 오탐이 잦아 **사람이 받은 통화를 기계로 잘못 본** 경우가 많고, 그러면 이미 통화한 분께 다시 걸게 됩니다.",
-                        "items": {
-                          "type": "string",
-                          "enum": [
-                            "no-answer",
-                            "busy",
-                            "rejected",
-                            "failed",
-                            "machine"
-                          ]
-                        },
-                        "example": [
+                      {
+                        "After": 30,
+                        "On": [
                           "no-answer",
                           "busy"
+                        ],
+                        "Windows": [
+                          {
+                            "Days": [
+                              1,
+                              2,
+                              3,
+                              4,
+                              5
+                            ],
+                            "Start": "18:00",
+                            "End": "21:00"
+                          }
                         ]
+                      }
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "After": {
+                          "type": "integer",
+                          "description": "직전 차수 통화를 마무리한 뒤 이 차수까지 기다릴 시간(분). 1~1440(하루).\n**1차(`Rounds[0]`)에는 쓸 수 없습니다** — 기준이 될 직전 통화가 없기 때문입니다. 발신 시작 시각은 `StartAt` 으로 지정하세요. 2차부터는 필수입니다.",
+                          "example": 30
+                        },
+                        "On": {
+                          "type": "array",
+                          "description": "직전 통화가 이 결과일 때만 이 차수를 진행합니다. `no-answer`(안 받음) · `busy`(통화 중) · `rejected`(거절/차단) · `failed`(발신 실패) · `machine`(자동응답기 판정).\n**1차에는 쓸 수 없고**(직전 결과가 없습니다) 2차부터는 필수입니다. 차수마다 다르게 줄 수 있습니다 — 2차는 안 받은 경우만, 3차는 통화 중도 포함하는 식입니다.\n`machine` 은 `MachineDetection` 을 함께 켠 배치에서만 동작합니다. 감지를 끈 채로 넣으면 거절되지는 않지만 **아무 일도 일어나지 않습니다** — 판정값(`answeredBy`)이 아예 없어 맞출 대상이 없기 때문입니다.\n켜더라도 신중히 고르세요 — 한국어 자동응답기 감지는 오탐이 잦아 **사람이 받은 통화를 기계로 잘못 본** 경우가 많고, 그러면 이미 통화한 분께 다시 걸게 됩니다.",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "no-answer",
+                              "busy",
+                              "rejected",
+                              "failed",
+                              "machine"
+                            ]
+                          },
+                          "example": [
+                            "no-answer",
+                            "busy"
+                          ]
+                        },
+                        "Windows": {
+                          "type": "array",
+                          "description": "이 차수의 발신 가능 시간대. 생략하면 법정 허용 시간(08:00~21:00) 전체입니다. 법정 허용 시간과 겹치는 구간이 전혀 없으면(예: 22:00~23:00) 400 으로 거절합니다 — 통과시키면 그 차수가 영원히 걸리지 않습니다.",
+                          "example": [
+                            {
+                              "Days": [
+                                1,
+                                2,
+                                3,
+                                4,
+                                5
+                              ],
+                              "Start": "18:00",
+                              "End": "21:00"
+                            }
+                          ],
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "Days",
+                              "Start",
+                              "End"
+                            ],
+                            "properties": {
+                              "Days": {
+                                "type": "array",
+                                "description": "1(월)~7(일)",
+                                "items": {
+                                  "type": "integer"
+                                },
+                                "example": [
+                                  1,
+                                  2,
+                                  3,
+                                  4,
+                                  5
+                                ]
+                              },
+                              "Start": {
+                                "type": "string",
+                                "example": "18:00"
+                              },
+                              "End": {
+                                "type": "string",
+                                "example": "21:00"
+                              }
+                            }
+                          }
+                        }
                       }
                     }
                   },
                   "MessagePolicy": {
                     "type": "object",
-                    "description": "끝내 통화가 안 된 분께 보낼 문자. 생략하면 보내지 않습니다. 본문의 `{{변수}}` 는 그 수신자의 `Variables` 값으로 치환됩니다(콜 플로우 멘트와 같은 문법). 참조한 변수가 없는 수신자가 한 명이라도 있으면 400 으로 거절합니다 — 빈칸으로 나가는 문자는 되돌릴 수 없기 때문입니다.\n문자도 발신과 같은 시간대 제한을 지키며, 보낼 시점이 24시간 이상 지나면 보내지 않습니다(일시정지해 둔 배치를 며칠 뒤 재개했을 때 뒤늦은 문자가 나가는 것을 막습니다).\n⚠️ 문자 발신번호 등록은 음성 발신 등록과 **별개 절차**입니다. 등록되지 않은 번호는 발송 요청이 성공해도 통신사에서 거절될 수 있어, 생성 응답의 `warnings` 로 알려 드립니다.",
+                    "description": "끝내 통화가 안 된 분께 보낼 문자. 생략하면 보내지 않습니다. 본문의 `{{변수}}` 는 그 수신자의 `Variables` 값으로 치환됩니다(콜 플로우 멘트와 같은 문법). 참조한 변수가 없는 수신자가 한 명이라도 있으면 400 으로 거절합니다 — 빈칸으로 나가는 문자는 되돌릴 수 없기 때문입니다.\n문자는 통화가 실패한 **직후** 나갑니다(차수 시간대를 따로 기다리지 않습니다). 다만 법정 금지 시간(21~08시)에 걸리면 다음 날 아침으로 밀리고, 보낼 시점이 24시간 이상 지나면 보내지 않습니다(일시정지해 둔 배치를 며칠 뒤 재개했을 때 뒤늦은 문자가 나가는 것을 막습니다).\n⚠️ 문자 발신번호 등록은 음성 발신 등록과 **별개 절차**입니다. 등록되지 않은 번호는 발송 요청이 성공해도 통신사에서 거절될 수 있어, 생성 응답의 `warnings` 로 알려 드립니다.",
                     "properties": {
                       "OnFirstFail": {
                         "type": "object",
-                        "description": "**첫 통화**가 안 됐을 때 바로 보낼 문자. 재시도 전화가 그 뒤에 이어집니다. RetryPolicy 없이는 쓸 수 없습니다(다시 걸지 않으면 첫 실패가 곧 최종 실패라 OnFinalFail 과 같은 뜻이 됩니다).",
+                        "description": "**첫 통화**가 안 됐을 때 바로 보낼 문자. 재시도 전화가 그 뒤에 이어집니다. 재시도 차수 없이는(`Rounds` 가 1개) 쓸 수 없습니다 — 다시 걸지 않으면 첫 실패가 곧 최종 실패라 OnFinalFail 과 같은 뜻이 됩니다.",
                         "required": [
                           "Body"
                         ],
@@ -4423,35 +6999,6 @@
                   "Timezone": {
                     "type": "string",
                     "description": "발신 시간대 판정 기준. 기본값: Asia/Seoul"
-                  },
-                  "Windows": {
-                    "type": "array",
-                    "description": "발신 가능 시간대(법정 허용 시간 내에서만 적용).",
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "days",
-                        "start",
-                        "end"
-                      ],
-                      "properties": {
-                        "days": {
-                          "type": "array",
-                          "description": "1(월)~7(일)",
-                          "items": {
-                            "type": "integer"
-                          }
-                        },
-                        "start": {
-                          "type": "string",
-                          "example": "09:00"
-                        },
-                        "end": {
-                          "type": "string",
-                          "example": "18:00"
-                        }
-                      }
-                    }
                   },
                   "StartAt": {
                     "type": "string",
@@ -4719,6 +7266,28 @@
               "maximum": 500
             },
             "example": 50
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 500
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 500
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 200
           }
         ],
         "responses": {
@@ -5019,6 +7588,557 @@
           },
           "409": {
             "description": "이미 종료된 배치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/blocked-recipients": {
+      "get": {
+        "operationId": "listBlockedRecipients",
+        "summary": "수신거부 목록 조회",
+        "description": "계정의 수신거부(DNC) 명단을 조회합니다. 기본은 **현재 차단 중인 항목만** 반환하며,\n해제된 이력까지 보려면 `status` 를 released 또는 all 로 지정합니다.\n\n같은 번호라도 채널(call/message)마다 별개 항목이므로, 전화와 문자를 모두 거부한 번호는 2건으로 나타납니다.",
+        "tags": [
+          "BlockedRecipients"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "call",
+                "message"
+              ]
+            },
+            "description": "채널 필터. 미지정 시 전체.",
+            "example": "call"
+          },
+          {
+            "name": "number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "번호 필터. 하이픈·+82 형태로 보내도 정규화 후 대조합니다.",
+            "example": "010-1234-5678"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "released",
+                "all"
+              ],
+              "default": "active"
+            },
+            "description": "active=차단 중(기본), released=해제된 이력, all=전체",
+            "example": "active"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "페이지 번호(0-based)",
+            "example": 0
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            },
+            "description": "페이지 크기(최대 100)",
+            "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "수신거부 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipientListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBlockedRecipient",
+        "summary": "수신거부 등록",
+        "description": "번호를 수신거부 명단에 등록합니다. 대상은 이 계정의 **발신**(전화·문자)이고, 착신은 대상이 아닙니다 —\n그 번호에서 걸려오는 전화는 그대로 받습니다.\n\n등록 즉시 **발신이 막힙니다.** 이 계정에서 그 번호로 통화를 걸거나 문자를 보내면 발신 직전에\n`422 recipient_blocked` 로 거절되고, 배치 발신(캠페인)도 같은 관문을 지나므로 해당 대상은 자동으로\n건너뜁니다. 이미 진행 중인 통화는 끊지 않습니다 — 막는 것은 새 발신입니다.\n\n**멱등입니다.** 이미 차단 중인 (번호, 채널) 조합을 다시 등록하면 에러 없이 기존 항목을 `200` 으로 돌려줍니다.\n새로 등록된 경우에만 `201` 입니다. 같은 사람이 수신거부를 두 번 요청하는 것은 정상 상황이기 때문입니다.\n\n전화와 문자를 모두 차단하려면 `channel` 을 바꿔 두 번 호출합니다.",
+        "tags": [
+          "BlockedRecipients"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "number",
+                  "channel"
+                ],
+                "properties": {
+                  "number": {
+                    "type": "string",
+                    "description": "수신거부할 번호. 하이픈·+82 형태 모두 허용되며 국내 표기로 정규화되어 저장됩니다.",
+                    "example": "010-1234-5678"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "call",
+                      "message"
+                    ],
+                    "description": "차단할 채널. call=전화, message=문자(SMS/LMS/MMS 공통).",
+                    "example": "call"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "api",
+                      "console",
+                      "import",
+                      "agent"
+                    ],
+                    "default": "api",
+                    "description": "접수 경로. 미지정 시 api. `agent` 는 AI 상담 중 고객이 구두로 요청해 등록한 경우로, 콘솔 수기 등록과 구분해 두면 나중에 \"언제 어떻게 거부 의사를 밝혔나\"에 답할 수 있습니다.",
+                    "example": "console"
+                  },
+                  "sourceRef": {
+                    "type": "string",
+                    "description": "증빙 링크(통화 id 또는 메시지 id). 어떤 통화·문자에서 거부 의사가 나왔는지 되짚는 용도입니다.",
+                    "example": "CA1a2b3c4d5e"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "자유 메모",
+                    "example": "상담 중 재연락 거부 의사 밝힘"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "이미 차단 중 — 기존 항목을 그대로 반환(멱등)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipient"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "수신거부 등록 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipient"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION) — 번호 형식 오류, 잘못된 channel/source 등",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/blocked-recipients/{blockId}": {
+      "get": {
+        "operationId": "getBlockedRecipient",
+        "summary": "수신거부 항목 조회",
+        "description": "수신거부 항목 하나의 상세를 조회합니다. 해제된 항목도 이력으로 남아 있어 조회되며, 이때 active 는 false 입니다.",
+        "tags": [
+          "BlockedRecipients"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신거부 항목 id",
+            "example": "clx9blk00001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "수신거부 항목 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipient"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateBlockedRecipient",
+        "summary": "수신거부 메모 수정",
+        "description": "수신거부 항목의 메모를 수정합니다.\n\n번호와 채널은 변경할 수 없습니다 — 바꾸면 \"누가 무엇을 언제 거부했는가\"라는 증빙이 뒤틀리기 때문입니다.\n대상이 잘못 등록됐다면 해제(DELETE)한 뒤 올바른 번호로 새로 등록하세요.",
+        "tags": [
+          "BlockedRecipients"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신거부 항목 id",
+            "example": "clx9blk00001"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true,
+                    "description": "변경할 메모. null 또는 빈 문자열이면 메모를 지웁니다. 미포함 시 변경 없음.",
+                    "example": "2차 확인 완료"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipient"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "releaseBlockedRecipient",
+        "summary": "수신거부 해제",
+        "description": "수신거부를 해제해 다시 발신할 수 있게 합니다.\n\n**항목은 삭제되지 않습니다.** `unblockedAt` 이 기록되고 `active` 가 false 가 될 뿐, 행은 이력으로 남습니다 —\n언제 거부했고 언제 풀렸는지가 곧 증빙이기 때문입니다. 해제된 항목은 `status=released` 또는 `all` 로 조회합니다.\n\n이미 해제된 항목에 다시 호출해도 성공(200)이며, 최초 해제 시각은 덮어쓰지 않습니다.",
+        "tags": [
+          "BlockedRecipients"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신거부 항목 id",
+            "example": "clx9blk00001"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "해제 사유 메모",
+                    "example": "고객이 재동의함"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "해제 성공 — 해제 정보가 채워진 항목을 반환",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedRecipient"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
             "content": {
               "application/json": {
                 "schema": {
@@ -5893,6 +9013,28 @@
             "example": 20
           },
           {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          },
+          {
             "name": "status",
             "in": "query",
             "schema": {
@@ -6689,6 +9831,28 @@
             "example": 20
           },
           {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          },
+          {
             "name": "status",
             "in": "query",
             "schema": {
@@ -7103,6 +10267,28 @@
               "default": 20
             },
             "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
           },
           {
             "name": "status",
@@ -7842,6 +11028,18 @@
         "description": "API Key를 Bearer 토큰으로 전달"
       }
     },
+    "parameters": {
+      "AssignmentSessionToken": {
+        "name": "token",
+        "in": "path",
+        "required": true,
+        "description": "발급 링크에 포함된 1회용 고엔트로피 세션 토큰",
+        "schema": {
+          "type": "string",
+          "minLength": 32
+        }
+      }
+    },
     "schemas": {
       "AgentKnowledgeConfiguration": {
         "type": "object",
@@ -8262,8 +11460,8 @@
           },
           "code": {
             "type": "string",
-            "description": "기계 판독용 에러 코드 (SCREAMING_SNAKE_CASE). 일부 에러에만 포함.\n\nCalls / Numbers (전화번호 정규화) 관련:\n  - `INVALID_PHONE_NUMBER`: 전화번호 포맷 오류 (한국 번호 형식 아님)\n  - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
-            "example": "INVALID_PHONE_NUMBER"
+            "description": "기계 판독용 에러 코드. **분기는 이 값으로 하세요** — `error` 문구는 안내를 다듬으면서\n바뀔 수 있지만 코드는 계약입니다.\n\n같은 상태 코드라도 대응이 갈리는 경우가 있습니다. 예를 들어 발신의 `422` 는\n  - `recipient_blocked`: 수신거부 명단에 있는 번호입니다. 재시도하지 말고 명단에서\n    해제해야 발신됩니다.\n  - `quota_exceeded`: 플랜 한도를 넘었습니다. 다음 주기에 다시 발신됩니다.\n\n전화번호 정규화 관련:\n  - `INVALID_PHONE_NUMBER`: 전화번호 포맷 오류 (한국 번호 형식 아님)\n  - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
+            "example": "recipient_blocked"
           }
         }
       },
@@ -8577,6 +11775,48 @@
           }
         }
       },
+      "VoiceCloneResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ClawOps 복제 음성 리소스 ID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "cloning",
+              "ready",
+              "failed"
+            ]
+          },
+          "voice": {
+            "type": "string",
+            "description": "ready 상태에서 Agent voice 설정에 사용할 ID"
+          },
+          "consentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "AgentKnowledgeDocument": {
         "type": "object",
         "required": [
@@ -8623,6 +11863,237 @@
           },
           "embeddingModel": {
             "type": "string"
+          },
+          "dateCreated": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateUpdated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AgentMcpBinding": {
+        "type": "object",
+        "description": "에이전트에 연결된 MCP 서버와 **그 에이전트에만 허용된 도구 목록**. 같은 연결이라도 에이전트마다 다른 도구를 허용할 수 있습니다(조회 전용 / 변경 가능).",
+        "required": [
+          "connectionId",
+          "name",
+          "host",
+          "status",
+          "enabled",
+          "allowedTools",
+          "failureMode",
+          "missingTools",
+          "dateUpdated"
+        ],
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "example": "clx0mcp0000000000000001"
+          },
+          "name": {
+            "type": "string",
+            "example": "예약 CRM"
+          },
+          "host": {
+            "type": "string",
+            "example": "crm.example.com"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "untested",
+              "tested",
+              "credential_error"
+            ],
+            "example": "tested"
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "allowedTools": {
+            "type": "array",
+            "description": "이 에이전트가 호출할 수 있는 도구. 여기 없는 도구는 모델에 노출되지 않습니다.",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "get_reservation"
+            ]
+          },
+          "failureMode": {
+            "type": "string",
+            "description": "continue 는 MCP 서버 장애 시 해당 도구만 빼고 통화를 계속합니다. fail_session 은 연결하지 못하면 세션 시작 자체를 실패시킵니다(외부 시스템이 필수인 경우).",
+            "enum": [
+              "continue",
+              "fail_session"
+            ],
+            "example": "continue"
+          },
+          "missingTools": {
+            "type": "array",
+            "description": "allowedTools 에 있지만 마지막 연결 테스트 결과에는 없는 도구. 서버가 도구를 없앴거나 이름을 바꾼 경우이며, 통화에서는 호출되지 않습니다.",
+            "items": {
+              "type": "string"
+            },
+            "example": []
+          },
+          "dateUpdated": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "McpTool": {
+        "type": "object",
+        "description": "MCP 서버가 노출한 도구 하나. name/description/inputSchema 는 **연결한 서버가 제공한 값**이며 모델 입력에 그대로 포함됩니다(신뢰할 수 있는 서버만 연결하세요).",
+        "required": [
+          "name",
+          "description",
+          "inputSchema"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "get_reservation"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "예약 번호로 예약 정보를 조회합니다."
+          },
+          "inputSchema": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "도구 인자의 JSON Schema. 서버가 준 원본입니다."
+          }
+        }
+      },
+      "McpConnection": {
+        "type": "object",
+        "description": "에이전트가 사용할 외부 MCP 서버 연결. 자격증명은 저장 시 암호화되며 **어떤 응답에도 포함되지 않습니다** — 설정 여부는 hasSecret 으로만 확인합니다.",
+        "required": [
+          "connectionId",
+          "name",
+          "url",
+          "host",
+          "transport",
+          "authType",
+          "authHeaderName",
+          "hasSecret",
+          "enabled",
+          "status",
+          "toolCount",
+          "tools",
+          "lastTestedAt",
+          "lastErrorCode",
+          "agentCount",
+          "dateCreated",
+          "dateUpdated"
+        ],
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "description": "연결 ID",
+            "example": "clx0mcp0000000000000001"
+          },
+          "name": {
+            "type": "string",
+            "example": "예약 CRM"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://crm.example.com/mcp"
+          },
+          "host": {
+            "type": "string",
+            "description": "url 의 호스트. 목록 화면 표시용.",
+            "example": "crm.example.com"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "streamable_http",
+              "sse"
+            ],
+            "example": "streamable_http"
+          },
+          "authType": {
+            "type": "string",
+            "enum": [
+              "none",
+              "bearer",
+              "api_key"
+            ],
+            "example": "bearer"
+          },
+          "authHeaderName": {
+            "type": "string",
+            "nullable": true,
+            "description": "authType=api_key 일 때의 헤더 이름. bearer 는 Authorization 고정이라 null.",
+            "example": null
+          },
+          "hasSecret": {
+            "type": "boolean",
+            "description": "자격증명 설정 여부. 값 자체는 조회할 수 없습니다.",
+            "example": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "status": {
+            "type": "string",
+            "description": "untested 는 연결 테스트를 통과하지 않은 상태입니다. 에이전트에 붙이려면 tested 여야 하며, 통화 중에도 tested 인 연결만 사용됩니다. credential_error 는 마지막 테스트가 인증 실패한 경우입니다.",
+            "enum": [
+              "untested",
+              "tested",
+              "credential_error"
+            ],
+            "example": "tested"
+          },
+          "toolCount": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 3
+          },
+          "tools": {
+            "type": "array",
+            "description": "마지막 연결 테스트에서 발견된 도구 목록. 표시·선택용 스냅샷입니다.",
+            "items": {
+              "$ref": "#/components/schemas/McpTool"
+            }
+          },
+          "lastTestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastErrorCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "마지막 연결 실패 사유.",
+            "enum": [
+              "URL_BLOCKED",
+              "AUTH_FAILED",
+              "TIMEOUT",
+              "TLS_ERROR",
+              "PROTOCOL_ERROR",
+              "TOO_MANY_TOOLS"
+            ],
+            "example": null
+          },
+          "agentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "이 연결을 사용하는 에이전트 수.",
+            "example": 1
           },
           "dateCreated": {
             "type": "string",
@@ -8697,6 +12168,38 @@
             "nullable": true,
             "description": "녹음 다운로드 경로 (녹음이 있는 통화만)",
             "example": "/v1/accounts/AC1a2b3c4d/recordings/CAabcdef1234567890"
+          },
+          "hangupCause": {
+            "type": "string",
+            "nullable": true,
+            "description": "통화 종료 사유. `status` 가 왜 그렇게 끝났는지를 구분합니다. 종료 전이거나 사유\n미상이면 null.\n\n네 갈래로 나뉩니다 — 번호 자체가 문제라 재시도해도 소용없는 것(`invalid_number` 등),\n일시적이라 재시도 가치가 있는 것(`no_answer`·`user_busy` 등), 번호가 아니라 **계정**\n문제인 것(`concurrency_limit_exceeded`·`subscription_inactive` 등), ClawOps 측 오류\n(`app_error`·`call_stuck`).\n\n**전체 목록과 재시도 판단 기준은 [통화 실패 사유](/docs/call-failure-causes) 가 정본입니다.**\n여기 값을 나열하지 않는 이유: 사유가 늘 때마다 spec·문서·대시보드가 각각 갱신돼야 하는데\n한 곳만 빠지면 조용히 어긋난다(실제로 그렇게 어긋난 적이 있다).\n",
+            "example": "invalid_number"
+          },
+          "hangupCauseQ850": {
+            "type": "integer",
+            "nullable": true,
+            "description": "통신망 Q.850 cause code. 1·5·28=결번, 16=정상해제, 17=통화중, 18/19/20=무응답,\n21=거절, 38=망장애. 사유 미상이면 null.\n",
+            "example": 1
+          },
+          "sipResponseCode": {
+            "type": "integer",
+            "nullable": true,
+            "description": "종료를 유발한 SIP 응답코드 (404=없는 번호, 486=통화중, 500=망 오류 등). 응답코드 없이 끝났으면 null.",
+            "example": 404
+          },
+          "hangupSource": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "carrier",
+              "callee",
+              "caller",
+              "app",
+              "system",
+              null
+            ],
+            "description": "종료 책임 주체. carrier(통신망) / callee(수신자) / caller(발신자) /\napp·system(ClawOps 측 오류 — 이 경우 재시도를 권장합니다).\n",
+            "example": "carrier"
           },
           "transferTo": {
             "type": "string",
@@ -8936,6 +12439,12 @@
               "GET"
             ],
             "example": "POST"
+          },
+          "callContextUrl": {
+            "type": "string",
+            "nullable": true,
+            "example": "https://api.example.com/integrations/clawops/call-context",
+            "description": "routingType='agent'에서 Managed Agent 시작 전에 통화별 CallContext를 조회하는 동기 endpoint."
           },
           "routingType": {
             "type": "string",
@@ -9384,7 +12893,7 @@
       },
       "CallFlowResponse": {
         "type": "object",
-        "description": "콜 플로우(결정적 ARS) 요약. 그래프(블럭 구성)는 포함하지 않습니다 — 플로우의 편집은 콘솔 빌더에서 하고, API는 발신·라우팅에 쓸 ID를 찾는 용도입니다.\n",
+        "description": "콜 플로우(결정적 ARS) 요약 — 목록 응답의 항목 형태입니다. 그래프(블럭 구성)는 포함하지 않습니다: 플로우 하나가 수십 KB라 목록에 싣지 않습니다. 그래프까지 필요하면 단건 조회나 쓰기 응답(`CallFlowDetailResponse`)을 보세요.\n",
         "properties": {
           "callFlowId": {
             "type": "string",
@@ -9425,6 +12934,232 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-07-27T01:40:11.000Z"
+          }
+        }
+      },
+      "CallFlowVoice": {
+        "type": "object",
+        "description": "플로우 전역 음성. 이 플로우의 모든 멘트를 이 목소리가 읽습니다. 생략하면 기본(무료) 음성입니다.\n`google`은 무료이고 `cartesia`·`elevenlabs`는 유료입니다. 다른 조직이 등록한 복제 음성 id는 403(`call_flow_voice_forbidden`)으로 거절합니다.",
+        "required": [
+          "provider"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "google",
+              "cartesia",
+              "elevenlabs"
+            ],
+            "description": "TTS 공급자",
+            "example": "google"
+          },
+          "voiceId": {
+            "type": "string",
+            "description": "유료 공급자의 음성 id (cartesia=카탈로그 UUID · elevenlabs=20자 영숫자)",
+            "example": "794f9389-aac1-45b6-b726-9d9369183238"
+          },
+          "model": {
+            "type": "string",
+            "description": "공급자 모델. **ElevenLabs 전용** — 다른 공급자에 붙이면 400입니다.",
+            "example": "eleven_v3"
+          },
+          "language": {
+            "type": "string",
+            "description": "언어 코드. 요청에서 생략하면 `ko`로 채워집니다.",
+            "example": "ko"
+          },
+          "controls": {
+            "type": "object",
+            "description": "음색 튜닝. 공급자가 지원하지 않는 값은 통화에 태우지 않고 저장만 합니다.",
+            "properties": {
+              "speed": {
+                "type": "number",
+                "example": 1
+              },
+              "volume": {
+                "type": "number",
+                "example": 1
+              }
+            }
+          }
+        },
+        "example": {
+          "provider": "google",
+          "language": "ko"
+        }
+      },
+      "CallFlowNode": {
+        "type": "object",
+        "description": "블럭 하나. `type` 이 종류를 정하고 나머지 필드는 종류마다 다릅니다.\n\n연결 필드(`next`·`invalidNext`·`timeoutNext`·`defaultNext`·`errorNext`)는 **다른 블럭의 id**\n또는 `null`(= 거기서 통화 종료)입니다. 존재하지 않는 id를 가리키면 400으로 거절합니다.\n\n| type | 필드 | 생략 시 기본값 |\n| --- | --- | --- |\n| `say` | `text`(1~2000), `next` | — |\n| `play` | `url`(https), `next` | — |\n| `pause` | `seconds`(1~60), `next` | — |\n| `message` | `body`(1~2000), `to?`, `subject?`, `next` | — |\n| `menu` | `prompt`, `branches`, `invalidNext`, `timeoutNext`, `maxDigits?`, `timeoutSec?`, `saveAs?` | `maxDigits:1`, `timeoutSec:5` |\n| `record` | `next`, `prompt?`, `maxLengthSec?`, `playBeep?`, `finishKey?`, `saveAs?` | `60`, `true`, `\"any\"` |\n| `dial` | `target:{kind,value}`, `next`, `callerId?`, `timeoutSec?` | `timeoutSec:30` |\n| `hangup` | `message?` | — (터미널) |\n| `setvar` | `assignments:[{name,value}]`(≤20), `next` | — |\n| `condition` | `cases:[{variable,op,value?,next}]`(≤20), `defaultNext` | — |\n| `http` | `method`, `url`, `next`, `errorNext`, `headers?`, `body?`, `saveAs:[{var,path}]?` | — |\n| `optout` | `next`, `number?`, `channel?`, `note?`, `saveAs?` | `\"{{caller}}\"`, `\"call\"` |\n\n- `branches` — 누른 키(`0`~`9`, `*`, `#`) → 블럭 id. 쓰는 키만 넣는 부분 맵이며 최소 1개는 있어야 합니다.\n- `finishKey` — `any`(아무 키) | `hash`(`#`만) | `none`(키로는 안 끝남)\n- `op` — `eq` | `ne` | `contains` | `gt` | `lt` | `exists` | `empty`\n- `target.kind` — `number` | `sip`\n- 변수 이름은 `^[A-Za-z_][A-Za-z0-9_]*$`, 멘트에서의 참조는 `{{이름}}`\n\n⚠️ **스키마에 없는 필드는 400으로 거절합니다.** `timeoutSecs` 같은 한 글자 오타가 조용히\n기본값으로 도는 것을 막기 위해서이고, 어느 필드가 문제인지는 응답의 `issues[]`가 짚어 줍니다.",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "블럭 종류",
+            "enum": [
+              "say",
+              "play",
+              "pause",
+              "message",
+              "menu",
+              "record",
+              "dial",
+              "hangup",
+              "setvar",
+              "condition",
+              "http",
+              "optout"
+            ],
+            "example": "say"
+          }
+        },
+        "additionalProperties": true,
+        "example": {
+          "type": "menu",
+          "prompt": "상담은 1번, 예약은 2번을 눌러주세요.",
+          "branches": {
+            "1": "agent",
+            "2": "booking"
+          },
+          "invalidNext": null,
+          "timeoutNext": null,
+          "saveAs": "choice"
+        }
+      },
+      "CallFlowGraph": {
+        "type": "object",
+        "description": "콜 플로우 그래프 — **응답용**. 요청에서 생략했던 기본값 필드가 모두 채워진 형태입니다\n(`CallFlowGraphInput` 설명 참조). 이 값을 그대로 고쳐 `PUT`/`PATCH`로 돌려보낼 수 있습니다.\n\n캔버스 좌표(`ui`)는 실리지 않습니다 — 에디터 전용이라 공개 계약에서 제외합니다.",
+        "required": [
+          "version",
+          "start",
+          "nodes"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ],
+            "example": 1
+          },
+          "start": {
+            "type": "string",
+            "description": "시작 블럭 id",
+            "example": "greeting"
+          },
+          "voice": {
+            "$ref": "#/components/schemas/CallFlowVoice"
+          },
+          "nodes": {
+            "type": "object",
+            "description": "블럭 id → 블럭",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CallFlowNode"
+            },
+            "example": {
+              "greeting": {
+                "type": "say",
+                "text": "안녕하세요, 클로옵스입니다.",
+                "next": "bye"
+              },
+              "bye": {
+                "type": "hangup",
+                "message": "이용해 주셔서 감사합니다."
+              }
+            }
+          }
+        },
+        "example": {
+          "version": 1,
+          "start": "greeting",
+          "voice": {
+            "provider": "google",
+            "language": "ko"
+          },
+          "nodes": {
+            "greeting": {
+              "type": "say",
+              "text": "안녕하세요, 클로옵스입니다.",
+              "next": "bye"
+            },
+            "bye": {
+              "type": "hangup",
+              "message": "이용해 주셔서 감사합니다."
+            }
+          }
+        }
+      },
+      "CallFlowGraphInput": {
+        "description": "콜 플로우 그래프 — **요청용**. 블럭(`nodes`)과 시작점(`start`)으로 통화 흐름 전체를 기술합니다.\n\n⚠️ **요청과 응답의 형태가 다릅니다.** 기본값이 있는 필드(`menu.maxDigits`·`menu.timeoutSec`,\n`record.maxLengthSec`·`playBeep`·`finishKey`, `dial.timeoutSec`, `voice.language`,\n`optout.number`·`channel`)는 요청에서 **생략할 수 있고**, 응답에는 **항상 채워져** 돌아옵니다.\n\n캔버스 좌표(`ui`)는 공개 계약 밖입니다 — 보내도 저장되지 않고, 응답에도 실리지 않습니다.\n콘솔 빌더가 잡아 둔 좌표는 `PUT`이면 버려지고 `PATCH`면 보존됩니다.\n\n그래프 전체는 256KB를 넘을 수 없습니다.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CallFlowGraph"
+          }
+        ]
+      },
+      "CallFlowDetailResponse": {
+        "description": "콜 플로우 단건 — 요약(`CallFlowResponse`)에 블럭 구성(`graph`)을 더한 형태입니다. 단건 조회와 생성·수정 응답이 모두 이 형태이므로, 받은 `graph`를 고쳐 그대로 되돌려보내는 왕복 편집(GET → PUT/PATCH)이 성립합니다.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CallFlowResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "graph": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/CallFlowGraph"
+                  }
+                ],
+                "nullable": true,
+                "description": "블럭 구성. 저장된 그래프가 현재 스키마로 읽히지 않으면(콘솔이 아닌 경로로 손댄 아주 오래된 플로우) `null`입니다 — 이름·연결된 번호는 그대로 유효하며, 이 경우 `PUT`으로 그래프 전체를 다시 올려 고칠 수 있습니다."
+              }
+            }
+          }
+        ]
+      },
+      "CallFlowError": {
+        "type": "object",
+        "description": "콜 플로우 쓰기 에러. 공통 `{ error, code }`에 그래프 검증 실패일 때만 `issues[]`가 더 붙습니다. 그래프가 중첩 구조라 \"구성이 올바르지 않습니다\" 한 줄로는 어디를 고칠지 알 수 없기 때문입니다.",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "사람이 읽을 수 있는 에러 메시지",
+            "example": "콜 플로우 구성이 올바르지 않습니다"
+          },
+          "code": {
+            "type": "string",
+            "description": "기계 판독용 에러 코드.\n\n  - `validation`: 이름 등 기본 입력 오류\n  - `call_flow_invalid_graph`: 그래프 구조·참조 오류 (`issues[]` 동반)\n  - `call_flow_graph_too_large`: 그래프 256KB 초과\n  - `call_flow_not_found`: 계정이 소유한 플로우가 아님\n  - `call_flow_in_use`: 착신에 물린 번호가 있어 삭제 불가\n  - `call_flow_limit_reached`: 계정당 개수 상한 초과\n  - `call_flow_voice_forbidden`: 다른 조직이 등록한 복제 음성",
+            "example": "call_flow_invalid_graph"
+          },
+          "issues": {
+            "type": "array",
+            "description": "그래프 검증 실패의 필드 단위 사유. `code=call_flow_invalid_graph` 일 때만 실립니다.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "문제가 난 위치(점 표기). 참조 오류는 `nodes.<블럭id>` 입니다.",
+                  "example": "nodes.ask.timeoutSecs"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "알 수 없는 필드입니다: timeoutSecs"
+                }
+              }
+            },
+            "example": [
+              {
+                "path": "nodes.ask.timeoutSecs",
+                "message": "알 수 없는 필드입니다: timeoutSecs"
+              }
+            ]
           }
         }
       },
@@ -9474,13 +13209,6 @@
           "timezone": {
             "type": "string"
           },
-          "windows": {
-            "type": "array",
-            "nullable": true,
-            "items": {
-              "type": "object"
-            }
-          },
           "startAt": {
             "type": "string",
             "format": "date-time",
@@ -9501,21 +13229,43 @@
             ],
             "description": "자동응답기 감지 모드. 사용하지 않는 배치는 null 입니다."
           },
-          "retryPolicy": {
-            "type": "object",
-            "nullable": true,
-            "description": "통화가 안 됐을 때 다시 거는 정책. null 이면 한 번 걸고 끝입니다.",
-            "properties": {
-              "delaysMinutes": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
-                }
-              },
-              "retryOn": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+          "rounds": {
+            "type": "array",
+            "description": "발신 차수. 배열 인덱스가 곧 차수이고 rounds[0] 이 1차 발신입니다. 길이 1 = 한 번 걸고 끝. 각 차수가 자기 시간창(windows)을 가집니다.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "after": {
+                  "type": "integer",
+                  "description": "직전 차수를 마무리한 뒤 기다릴 시간(분). 1차에는 없습니다."
+                },
+                "on": {
+                  "type": "array",
+                  "description": "직전 통화가 이 결과일 때만 진행. 1차에는 없습니다.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "windows": {
+                  "type": "array",
+                  "description": "이 차수의 발신 가능 시간대. 없으면 법정 허용 시간 전체입니다.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "days": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer"
+                        }
+                      },
+                      "start": {
+                        "type": "string"
+                      },
+                      "end": {
+                        "type": "string"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -9603,14 +13353,14 @@
           },
           "dialRound": {
             "type": "integer",
-            "description": "실제로 벨이 울린 횟수. RetryPolicy 의 재시도 회차가 이 값으로 셉니다 — 발신 자체가 실패한 경우(통신 오류)는 세지 않으므로, 고객이 설정한 재시도 횟수가 망 장애로 소모되지 않습니다.",
+            "description": "실제로 벨이 울린 횟수이자 **다음에 걸 차수의 인덱스**입니다(0이면 다음이 1차) — 발신 자체가 실패한 경우(통신 오류)는 세지 않으므로, 고객이 설정한 재시도 횟수가 망 장애로 소모되지 않습니다.",
             "example": 2
           },
           "nextAttemptAt": {
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "다음 재시도 예정 시각. **발신 가능 시간대 밖이면 실제 발신은 더 뒤로 밀립니다** (예: 21시 20분 예정 → 다음 날 08시)."
+            "description": "다음 재시도 예정 시각(정책상). **그 차수의 발신 가능 시간대 밖이면 실제 발신은 더 뒤로 밀립니다** — 저녁 차수의 \"30분 뒤\"가 낮 10시 30분이면 실제로는 18시입니다. 보정된 값은 expectedDialAt 을 보세요."
           },
           "expectedDialAt": {
             "type": "string",
@@ -9679,6 +13429,118 @@
           "messageError": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "BlockedRecipient": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "clx9blk00001",
+            "description": "수신거부 항목 id"
+          },
+          "number": {
+            "type": "string",
+            "example": "01012345678",
+            "description": "수신거부한 상대 번호. 하이픈·+82 형태로 보내도 국내 표기로 정규화되어 저장·응답됩니다."
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "call",
+              "message"
+            ],
+            "example": "call",
+            "description": "차단 채널. call=전화, message=문자(SMS/LMS/MMS 공통). 같은 번호라도 채널마다 별개 항목입니다."
+          },
+          "active": {
+            "type": "boolean",
+            "example": true,
+            "description": "지금 차단 중인지 여부. 해제된 항목도 이력으로 남아 조회되므로 이 값으로 구분합니다."
+          },
+          "source": {
+            "type": "string",
+            "example": "api",
+            "description": "접수 경로. 공개 API 로 등록하면 api·console·import 중 하나입니다. ARS(수신거부 9번)·문자 회신 등 내부 접수 경로로 등록된 항목은 ars·sms·agent 로 나타납니다."
+          },
+          "sourceRef": {
+            "type": "string",
+            "nullable": true,
+            "example": "CA1a2b3c4d5e",
+            "description": "증빙 링크. 어느 통화에서 수신거부를 눌렀는지 / 어느 문자에 회신했는지. 가리키는 대상은 source 가 결정합니다."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "상담 중 재연락 거부 의사 밝힘",
+            "description": "자유 메모"
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true,
+            "example": null,
+            "description": "등록 주체(콘솔 사용자 등). 자동 접수는 null 입니다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "수신거부 접수 시각"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unblockedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "해제 시각. null 이면 차단 중입니다. 해제해도 항목은 삭제되지 않고 이력으로 남습니다."
+          },
+          "unblockedSource": {
+            "type": "string",
+            "nullable": true,
+            "example": "api",
+            "description": "해제 경로"
+          },
+          "unblockedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "해제 주체. 자동 해제는 null 입니다."
+          },
+          "unblockedNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "해제 사유 메모"
+          }
+        }
+      },
+      "BlockedRecipientListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "수신거부 항목 목록. 최근 접수순.",
+            "items": {
+              "$ref": "#/components/schemas/BlockedRecipient"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "description": "현재 페이지(0-based)"
+              },
+              "pageSize": {
+                "type": "integer",
+                "description": "페이지 크기"
+              },
+              "total": {
+                "type": "integer",
+                "description": "필터에 해당하는 전체 건수"
+              }
+            }
           }
         }
       },
