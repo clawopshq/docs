@@ -168,10 +168,6 @@ for (const n of numbers) {
 }
 ```
 
-<Note>
-  이 엔드포인트에는 페이지네이션과 필터가 없습니다. 계정이 보유한 번호가 `data`에 전부 담겨 한 번에 반환됩니다. 다른 목록 API와 달리 `pageSize`, `page` 같은 파라미터를 받지 않습니다.
-</Note>
-
 ## 착신 라우팅
 
 `routingType`이 이 번호로 걸려온 전화를 누가 받을지 결정합니다.
@@ -242,10 +238,6 @@ const number = await client.numbers.update("07012341234", {
 ```
 </CodeBlocks>
 
-<Note>
-  SDK로 `agent`, `callflow`, `forward` 라우팅을 설정하려면 Python은 `0.41.0`, TypeScript는 `0.29.0` 이상이 필요합니다. 그 이전 버전은 이 세 값을 인식하지 못합니다.
-</Note>
-
 에이전트를 만드는 방법은 [에이전트](/agents)를 참고하세요. 번호에 연결된 에이전트는 삭제할 수 없으므로, 에이전트를 지우려면 먼저 번호의 라우팅을 다른 대상으로 바꿔야 합니다.
 
 <Tip>
@@ -263,8 +255,6 @@ curl -X PUT "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers/070123
     "callFlowId": "CF41b8e07d9c25"
   }'
 ```
-
-`callFlowId`는 `GET /v1/accounts/{accountId}/call-flows`로 조회합니다.
 
 ### 내 서버가 받기
 
@@ -322,13 +312,9 @@ curl -X PUT "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers/070123
 | `ringing` | 벨이 울리기 시작했습니다. |
 | `answered` | 통화가 연결됐습니다. |
 | `completed` | 통화가 끝났습니다. 응답 없음, 통화 중, 거절, 실패도 이 토큰으로 통지되며 실제 사유는 페이로드에서 구분합니다. |
-| `transfer` | 호전환의 진행 상황입니다. |
+| `transfer` | 호전환의 진행 상황입니다. **기본에 포함되지 않아** 받으려면 직접 나열해야 합니다. |
 
 `statusCallbackEvents`를 생략하면 `initiated ringing answered completed`가 적용됩니다.
-
-<Note>
-  `transfer`는 기본 집합에 **포함되지 않습니다.** 호전환 진행 상황을 받으려면 필요한 이벤트를 직접 나열해야 합니다. 전환 한 번마다 통지가 여러 건 더 발생하므로 기본으로 켜지 않습니다.
-</Note>
 
 ```bash
 curl -X PUT "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/numbers/07012341234" \
