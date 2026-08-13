@@ -6,13 +6,6 @@ slug: numbers
 
 전화번호는 ClawOps의 통화와 문자가 드나드는 창구입니다. 하나의 번호로 전화를 받고, 전화를 걸고, 문자를 보냅니다. 번호를 발급한 뒤 **착신 라우팅**을 지정하면 그 번호로 걸려온 전화를 누가 받을지 정해집니다.
 
-```text
-POST   /v1/accounts/{accountId}/numbers
-GET    /v1/accounts/{accountId}/numbers
-PUT    /v1/accounts/{accountId}/numbers/{number}
-DELETE /v1/accounts/{accountId}/numbers/{number}
-```
-
 <Info>
   번호는 ClawOps 번호 풀에서 자동으로 배정됩니다. 국가, 지역번호, 뒷자리를 지정할 수 없고 발급 전에 후보를 미리 볼 수도 없습니다. 어떤 번호가 나올지는 발급 응답에서 확인합니다.
 </Info>
