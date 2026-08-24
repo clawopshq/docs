@@ -85,7 +85,7 @@ navbar-links:
     text: ClawOps
     url: https://claw-ops.com
   - type: github
-    value: https://github.com/learners-superpumped/clawops-docs
+    value: https://github.com/clawopshq/docs
   - type: filled
     text: 대시보드
     url: https://platform.claw-ops.com
