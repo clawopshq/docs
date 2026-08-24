@@ -64,3 +64,7 @@ npm run check
 ```
 
 다음 단계에서 제품 저장소의 API 변경이 이 저장소에 PR을 생성하도록 자동화합니다.
+
+## 라이선스
+
+이 문서는 [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) 라이선스를 따릅니다. 출처를 밝히면 자유롭게 공유·개작할 수 있습니다. 전문은 [LICENSE](./LICENSE)를 참고하세요.

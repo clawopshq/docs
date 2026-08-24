@@ -9,5 +9,6 @@
   },
   "devDependencies": {
     "fern-api": "^5.84.0"
-  }
+  },
+  "license": "CC-BY-4.0"
 }
