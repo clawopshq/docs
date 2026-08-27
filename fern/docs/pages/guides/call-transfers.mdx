@@ -10,10 +10,9 @@ slug: call-transfers
 `transferTo`, `transferStatus`, `transferDuration` 에 남습니다.
 
 <Warning>
-  이 필드들을 설정하는 API 나 VoiceML verb 는 없습니다. 전환을 **지시**하는 것과 그 결과가
-  **기록**되는 것은 다릅니다. 전환은 에이전트가 통화 중에 실행하고, 위 필드는 그렇게 실행된
-  전환의 결과가 사후에 채워지는 **읽기 전용 관측 필드**입니다. 전환이 없었던 통화는 전부
-  `null` 입니다.
+  이 필드들은 **읽기 전용 관측 필드**입니다. 값을 지정하는 요청 필드나 VoiceML verb 는 없고,
+  전환은 에이전트가 통화 중에 실행하며 그 결과가 사후에 채워집니다. 전환이 없었던 통화는
+  전부 `null` 입니다.
 </Warning>
 
 ## 어디서 받나요
@@ -50,7 +49,7 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 | `transferTo` | string \| null | 전환 대상 번호 또는 SIP URI 입니다. 전환이 없었으면 `null` 입니다. |
 | `transferStatus` | string \| null | 전환 결과입니다. 아래 값 표를 보세요. |
 | `transferDuration` | number \| null | 전환 통화 시간(초)입니다. 대상이 받은 시점부터 그 전환이 끝날 때까지이며, 연결되지 못했으면 `null` 입니다. |
-| `transferHangupCauseQ850` | number \| null | 전환 leg 의 통신망 Q.850 cause 입니다. 16은 정상해제, 17은 통화중, 19는 무응답, 21은 거절, 38은 망장애입니다. |
+| `transferHangupCauseQ850` | number \| null | 전환 leg 의 통신망 Q.850 cause 입니다. 사유 미상이면 `null` 입니다. |
 | `transferSipResponseCode` | number \| null | 전환 leg 의 SIP 응답코드입니다. 사유 미상이면 `null` 입니다. |
 | `transferReasonText` | string \| null | 통신망이 준 원본 진단 텍스트입니다. 자유 형식이라 분기 조건으로 쓰지 마세요. |
 | `transfers` | array | 전환 leg 전체 이력입니다. **단건 조회에만** 실립니다. |
@@ -77,11 +76,8 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 이때 `transfers` 에는 시도마다 한 건씩 쌓이고, 위 `transfer*` 단일 필드는 그중 **대표 leg 하나**만
 보여줍니다.
 
-대표 leg 는 이렇게 정합니다.
-
-1. 끝난 leg 만 후보입니다. `initiated`, `ringing`, `connected`, `interrupted` 는 제외됩니다.
-2. `completed` 인 leg 를 우선합니다.
-3. 그래도 여럿이면 `sequence` 가 가장 큰 leg 입니다.
+대표 leg 는 **끝난 leg 중 하나**입니다. `completed` 인 leg 가 있으면 그것을, 없으면 `sequence` 가
+가장 큰 leg 를 보여줍니다.
 
 즉 세 번 시도해 마지막에 성공했다면 `transferStatus` 는 `completed` 이고 `transferTo` 는 그 성공한
 번호이며, 앞선 두 번의 실패는 `transfers` 에만 남습니다. 전환 시도를 빠짐없이 보려면 `transfers` 를
@@ -91,7 +87,7 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 | --- | --- | --- |
 | `sequence` | number | 이 통화에서 몇 번째 전환 시도인지입니다. 1부터 시작합니다. |
 | `to` | string \| null | 전환 대상입니다. |
-| `mode` | string \| null | `blind`(바로 넘김), `warm`(대상에게 안내 멘트 후 연결), `refer`와 `refer-attended`(SIP 단말이 건 REFER 전환)입니다. |
+| `mode` | string \| null | `blind`(즉시 전환), `warm`(대상에게 whisper 안내 후 연결), `refer`와 `refer-attended`(SIP 단말이 건 REFER 전환)입니다. |
 | `destinationType` | string \| null | `pstn`(통신망 번호) 또는 `sip`(SIP URI 직결)입니다. |
 | `status` | string \| null | `initiated`, `ringing`, `connected`, `completed`, `failed`, `no-answer`, `busy`, `canceled`, `interrupted` 중 하나입니다. |
 | `duration` | number \| null | 연결부터 종료까지의 초입니다. 관측용이며 연결되지 못했으면 `null` 입니다. |
@@ -106,8 +102,7 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 
 <Warning>
   `transferDuration` 과 `transfers[].duration` 은 관측값이지 과금 초가 아닙니다. 청구 기준 초는
-  `transfers[].billableDuration` 이고, 한 통화에서 `billable` 이 `true` 인 leg 는 최대 한 건입니다.
-  전환 요금을 계산하실 때 `duration` 을 합산하지 마세요.
+  `transfers[].billableDuration` 이니 `duration` 을 합산하지 마세요.
 </Warning>
 
 ## 예시
@@ -179,7 +174,7 @@ curl "https://api.claw-ops.com/v1/accounts/AC1a2b3c4d/calls/CAabcdef1234567890" 
 안내 문자를 보내려면 Status Callback 의 `transfer` 이벤트를 쓰세요. 전환 한 건마다 시작, 연결,
 종료 순으로 통지됩니다.
 
-`transfer` 는 기본 이벤트에 포함되지 않습니다. 받으려면 기본 네 개와 함께 직접 나열해야 합니다.
+`transfer` 는 기본 이벤트에 포함되지 않습니다. 받으려면 기본 이벤트와 함께 직접 나열해야 합니다.
 
 ```
 initiated ringing answered completed transfer
@@ -187,6 +182,8 @@ initiated ringing answered completed transfer
 
 번호의 `statusCallbackEvents` 또는 발신 요청의 `StatusCallbackEvent` 에 위 문자열을 그대로 넣으면
 됩니다. 통지에 실리는 파라미터는 다음과 같습니다.
+
+{/* TODO: guides/webhooks.mdx 를 채우면 이 표를 지우고 그쪽으로 링크할 것 — 지금은 그 페이지가 스텁이라 여기가 유일한 자리다 */}
 
 | 파라미터 | 설명 |
 | --- | --- |
@@ -197,6 +194,9 @@ initiated ringing answered completed transfer
 | `TransferDuration` | 전환 통화 시간(초)입니다. 종료 이벤트에만 실립니다. |
 | `TransferReason` | 에이전트가 파악한 문의 유형입니다. 파악하지 못했으면 파라미터 자체가 오지 않습니다. |
 | `TransferContext` | Voice Agent SDK 의 `transfer({ context })` 로 넘긴 구조화 데이터입니다. JSON 문자열로 전달됩니다. |
+| `From` | 통화의 발신번호입니다. |
+| `To` | 통화의 수신번호입니다. |
+| `Direction` | `inbound` 또는 `outbound` 입니다. `From` 과 `To` 중 어느 쪽이 고객인지 판단하는 근거입니다. |
 
 <Note>
   이 이벤트에는 `CallStatus` 가 실리지 않습니다. 통화 자체의 상태 통지와 구분하려면
