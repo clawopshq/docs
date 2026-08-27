@@ -12267,7 +12267,7 @@
                 "destinationType": {
                   "type": "string",
                   "nullable": true,
-                  "description": "pstn(통신망 번호) | sip(SIP URI 직결)"
+                  "description": "pstn(통신망 번호) | sip(SIP URI 직결). 2026-07-10 이전 전환은 null"
                 },
                 "status": {
                   "type": "string",
@@ -12313,7 +12313,7 @@
                   "type": "string",
                   "format": "date-time",
                   "nullable": true,
-                  "description": "대상이 받은 시각. 연결되지 못했으면 null"
+                  "description": "대상이 받은 시각. 연결되지 못했으면 null. ⚠️ 2026-07-10 이전 전환은 연결됐어도 null 이므로 연결 여부 판정에 쓰지 말 것(status·duration 을 볼 것).\n"
                 },
                 "endedAt": {
                   "type": "string",

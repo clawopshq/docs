@@ -88,7 +88,7 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 | `sequence` | number | 이 통화에서 몇 번째 전환 시도인지입니다. 1부터 시작합니다. |
 | `to` | string \| null | 전환 대상입니다. |
 | `mode` | string \| null | `blind`(즉시 전환), `warm`(대상에게 whisper 안내 후 연결), `refer`와 `refer-attended`(SIP 단말이 건 REFER 전환)입니다. |
-| `destinationType` | string \| null | `pstn`(통신망 번호) 또는 `sip`(SIP URI 직결)입니다. |
+| `destinationType` | string \| null | `pstn`(통신망 번호) 또는 `sip`(SIP URI 직결)입니다. 2026-07-10 이전 전환은 `null` 입니다. |
 | `status` | string \| null | `initiated`, `ringing`, `connected`, `completed`, `failed`, `no-answer`, `busy`, `canceled`, `interrupted` 중 하나입니다. |
 | `duration` | number \| null | 연결부터 종료까지의 초입니다. 관측용이며 연결되지 못했으면 `null` 입니다. |
 | `billable` | boolean | 과금 대상 여부입니다. 한 통화에서 최대 한 건만 `true` 입니다. |
@@ -96,9 +96,16 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 | `hangupCauseQ850` | number \| null | 이 leg 의 통신망 Q.850 cause 입니다. |
 | `sipResponseCode` | number \| null | 이 leg 의 SIP 응답코드입니다. |
 | `reasonText` | string \| null | 통신망 원본 진단 텍스트입니다. |
-| `startedAt` | string \| null | 전환을 시작한 시각입니다. |
-| `connectedAt` | string \| null | 대상이 받은 시각입니다. 연결되지 못했으면 `null` 입니다. |
-| `endedAt` | string \| null | 이 leg 가 끝난 시각입니다. |
+| `startedAt` | string \| null | 전환을 시작한 시각입니다. 2026-07-10 이전 전환은 `null` 입니다. |
+| `connectedAt` | string \| null | 대상이 받은 시각입니다. 연결되지 못했으면 `null` 입니다. 2026-07-10 이전 전환은 연결됐어도 `null` 이니 아래 주의를 보세요. |
+| `endedAt` | string \| null | 이 leg 가 끝난 시각입니다. 2026-07-10 이전 전환은 `null` 입니다. |
+
+<Warning>
+  **2026-07-10 이전 전환은 leg 별 시각과 `destinationType` 이 없습니다.** 그때는 전환 결과를 통화
+  한 건에 한 줄로만 기록했고 지금의 leg 이력은 그 기록에서 되살린 것이라, `startedAt` ·
+  `connectedAt` · `endedAt` · `destinationType` 이 전부 `null` 입니다. 연결 여부를 `connectedAt`
+  으로 판정하면 그 구간을 오분류합니다 — `status` 와 `duration` 을 보세요.
+</Warning>
 
 <Warning>
   `transferDuration` 과 `transfers[].duration` 은 관측값이지 과금 초가 아닙니다. 청구 기준 초는
