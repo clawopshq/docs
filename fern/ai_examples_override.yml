@@ -1,0 +1,1431 @@
+paths:
+  /v1/accounts/AC1a2b3c4d/messages/MGabcdef1234567890:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            messageId: MGabcdef1234567890
+          response:
+            body:
+              messageId: MGf9b8c7d6e5a4b3c2
+              status: sent
+              type: sms
+              subject: null
+              to: '01098765432'
+              from: '07012345678'
+              body: 안녕하세요, 고객님. 주문하신 상품이 오늘 발송되었습니다.
+              numMedia: 0
+              mediaUrl: []
+              direction: outbound
+              accountId: AC1a2b3c4d
+              dateCreated: '2024-04-20T14:45:00Z'
+              dateUpdated: '2024-04-20T14:50:00Z'
+  /v1/accounts/AC1a2b3c4d/calls/CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6/transcript:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+          response:
+            body:
+              status: completed
+              callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+              segmentCount: 2
+              segments:
+                - speaker: CUSTOMER
+                  start: 0
+                  end: 5.3
+                  text: Hello, I need help with my order.
+                - speaker: AGENT
+                  start: 5.4
+                  end: 10
+                  text: Sure, I can assist you with that. Can you provide your order number?
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+          response:
+            body:
+              status: pending
+              callId: CA1234567890abcdef1234567890abcdef
+  /v1/accounts/accountId/agents/agentId/knowledge:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+            agentId: agentId
+          response:
+            body:
+              data:
+                - documentId: a3f9c2d7-4b1e-4f8a-9c3d-2e7b5f6a1d9c
+                  title: Customer Support FAQ
+                  sourceType: markdown
+                  status: ready
+                  charCount: 2540
+                  chunkCount: 12
+                  embeddingModel: clawops-embedding-v1
+                  dateCreated: '2024-01-15T09:30:00Z'
+                  dateUpdated: '2024-02-10T14:45:00Z'
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+            agentId: agentId
+          request:
+            text: 환불은 결제일로부터 7일 이내에 요청할 수 있습니다.
+          response:
+            body:
+              documentId: a3f1c9e2-7b4d-4f8a-9c2e-5d6f7a8b9c0d
+              title: 환불 정책 안내
+              sourceType: text
+              status: ready
+              charCount: 38
+              chunkCount: 1
+              embeddingModel: clawops-embedding-v1
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+  /v1/accounts/accountId/agents/agentId/knowledge/documentId/reindex:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+            agentId: agentId
+            documentId: documentId
+          response:
+            body:
+              documentId: doc_987654321
+              title: Customer Support FAQ
+              sourceType: text
+              status: ready
+              charCount: 4520
+              chunkCount: 15
+              embeddingModel: clawops-embedding-v2
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-04-20T11:45:00Z'
+  /v1/accounts/accountId/agents/voices:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+          response:
+            body:
+              data:
+                - id: a1b2c3d4-e5f6-7890-ab12-cd34ef567890
+                  provider: cartesia
+                  model: sonic-3.5
+                  name: Cartesia Korean Female Voice
+                  description: ClawOps 기본 Cartesia 한국어 여성 음성, 자연스러운 발음과 부드러운 톤
+                  language: ko
+                  country: KR
+                  gender: feminine
+                  isFeatured: true
+                  isCustom: false
+                - id: f0e1d2c3-b4a5-6789-0abc-def123456789
+                  provider: cartesia
+                  model: sonic-3.5
+                  name: Custom Lee Minho Voice
+                  description: 사용자 계정에서 복제해 등록한 이민호 음성, 남성, 친근한 톤
+                  language: ko
+                  country: KR
+                  gender: masculine
+                  isFeatured: false
+                  isCustom: true
+  /v1/accounts/AC1a2b3c4d/calls/CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6/summary:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+          response:
+            body:
+              status: completed
+              callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+              resultJson:
+                coreSummary: The call was a product inquiry where the customer asked about pricing and delivery options. The agent provided detailed information and confirmed the order.
+                decisions:
+                  - decision: Proceed with order processing
+                    responsible: Sales Team
+                    dueDate: '2024-02-01'
+                followUps:
+                  - task: Send order confirmation email
+                    assignedTo: Customer Support
+                    dueDate: '2024-01-16'
+                sentiment: positive
+              provider: anthropic
+              model: claude-sonnet-4-6
+              promptVersion: default:v1
+              schemaVersion: default:v1
+              updatedAt: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/assignment-links/LK1a2b3c4d5e:
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            linkId: LK1a2b3c4d5e
+          response:
+            body:
+              ok: true
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            linkId: LK1a2b3c4d5e
+          response:
+            body:
+              linkId: FUjxM9qBBy_EIZp7QizzWSqXyUqqmrsnviw7PLdDI5w
+              url: https://platform.claw-ops.com/assign/FUjxM9qBBy_EIZp7QizzWSqXyUqqmrsnviw7PLdDI5w
+              status: consumed
+              createdAt: '2024-01-10T08:00:00Z'
+              expiresAt: '2024-01-20T08:00:00Z'
+              consumedAt: '2024-01-12T14:45:00Z'
+              webhookUrl: https://webhooks.example.com/assignment-callback
+              webhookMethod: POST
+              note: Customer requested urgent assignment
+              webhookHeaders:
+                X-Webhook-Token: tenant-secret-abc123
+              assignment:
+                number: '07098765432'
+                name: 홍길동
+                consumedAt: '2024-01-12T14:45:00Z'
+                releasedAt: null
+  /v1/accounts/AC1a2b3c4d/calls/CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6/events:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            callId: CA1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6
+          response:
+            body:
+              data:
+                - id: evt_9f8b7c6d5a4e3f2b1c0d
+                  event: answered
+                  detail:
+                    caller: '+821012345678'
+                    callee: '+821098765432'
+                    duration_seconds: 0
+                  timestamp: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/webhooks/WH1a2b3c4d/test:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            webhookId: WH1a2b3c4d
+          response:
+            body:
+              ok: true
+              message: Test webhook sent successfully to webhook WH1a2b3c4d
+  /v1/accounts/accountId/agents:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+          request:
+            name: 고객 지원 에이전트
+          response:
+            body:
+              agentId: cmagent123
+              name: 고객 지원 에이전트
+              instructions: 당신은 친절하고 유능한 한국어 음성 에이전트입니다. 사용자의 요청을 주의 깊게 듣고 정확하고 간결하게 답하세요.
+              greeting: true
+              language: ko
+              model: gpt-realtime-2.1-mini
+              voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+              voiceProvider: cartesia
+              voiceModel: sonic-3.5
+              configuration:
+                outputMode: realtime_voice
+                language: ko
+                knowledge:
+                  enabled: true
+                  topK: 3
+                stt:
+                  provider: openai
+                  model: gpt-4o-transcribe
+                  language: ko
+                  prompt: 사용자의 음성을 정확히 인식하여 텍스트로 변환하세요.
+                  temperature: 0.5
+                  detect_language: true
+                  noise_reduction_type: near_field
+                  use_realtime: true
+                llm:
+                  provider: openai-realtime
+                  model: gpt-realtime-2.1-mini
+                  voice: minji
+                tts:
+                  provider: cartesia
+                  model: sonic-3.5
+                  voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                  language: ko
+                  speed: 1.1
+                  volume: 1.1
+                vad:
+                  provider: silero
+                  min_silence_duration: 1
+                  min_speech_duration: 0.5
+                  prefix_padding_duration: 1
+                  max_buffered_speech: 30
+                  activation_threshold: 0.5
+                  sample_rate: 16000
+                  force_cpu: true
+                session:
+                  turn_detection: vad
+                  allow_interruptions: true
+                  min_endpointing_delay: 1
+                  max_endpointing_delay: 5
+                  min_interruption_duration: 1
+              phoneNumbers:
+                - '07012340001'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+          response:
+            body:
+              data:
+                - agentId: cmagent123
+                  name: 고객 지원 에이전트
+                  instructions: 당신은 친절하고 유능한 한국어 음성 에이전트입니다. 사용자의 요청을 주의 깊게 듣고 정확하고 간결하게 답하세요.
+                  greeting: true
+                  language: ko
+                  model: gpt-realtime-2.1-mini
+                  voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                  voiceProvider: cartesia
+                  voiceModel: sonic-3.5
+                  configuration:
+                    outputMode: realtime_voice
+                    language: ko
+                    knowledge:
+                      enabled: true
+                      topK: 3
+                    stt:
+                      provider: openai
+                      model: gpt-4o-transcribe
+                      language: ko
+                      prompt: 사용자의 음성을 정확히 인식하여 처리합니다.
+                      temperature: 0.5
+                      detect_language: true
+                      noise_reduction_type: near_field
+                      use_realtime: true
+                    llm:
+                      provider: openai
+                      model: gpt-realtime-2.1-mini
+                      voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                    tts:
+                      provider: cartesia
+                      model: sonic-3.5
+                      voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                      language: ko
+                      speed: 1.1
+                      volume: 1.1
+                    vad:
+                      provider: silero
+                      min_silence_duration: 1
+                      min_speech_duration: 0.5
+                      prefix_padding_duration: 1
+                      max_buffered_speech: 30
+                      activation_threshold: 0.5
+                      sample_rate: 16000
+                      force_cpu: true
+                    session:
+                      turn_detection: vad
+                      allow_interruptions: true
+                      min_endpointing_delay: 1
+                      max_endpointing_delay: 5
+                      min_interruption_duration: 1
+                  phoneNumbers:
+                    - '07012340001'
+                  dateCreated: '2024-01-15T09:30:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+  /v1/accounts/accountId/agents/agentId:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+            agentId: agentId
+          response:
+            body:
+              agentId: cmagent123
+              name: 고객 지원 에이전트
+              instructions: 당신은 친절하고 유능한 한국어 음성 에이전트입니다. 사용자의 요청을 주의 깊게 듣고 정확하고 간결하게 답하세요.
+              greeting: true
+              language: ko
+              model: gpt-realtime-2.1-mini
+              voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+              voiceProvider: cartesia
+              voiceModel: sonic-3.5
+              configuration:
+                outputMode: realtime_voice
+                language: ko
+                knowledge:
+                  enabled: true
+                  topK: 3
+                stt:
+                  provider: openai
+                  model: gpt-4o-transcribe
+                  language: ko
+                  prompt: 사용자의 음성을 정확히 인식하여 텍스트로 변환하세요.
+                  temperature: 0.5
+                  detect_language: true
+                  noise_reduction_type: near_field
+                  use_realtime: true
+                llm:
+                  provider: openai
+                  model: gpt-4o-mini
+                  voice: standard
+                tts:
+                  provider: cartesia
+                  model: sonic-3.5
+                  voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                  language: ko
+                  speed: 1.1
+                  volume: 1.1
+                vad:
+                  provider: silero
+                  min_silence_duration: 1.1
+                  min_speech_duration: 0.5
+                  prefix_padding_duration: 1.1
+                  max_buffered_speech: 30
+                  activation_threshold: 0.5
+                  sample_rate: 16000
+                  force_cpu: true
+                session:
+                  turn_detection: vad
+                  allow_interruptions: true
+                  min_endpointing_delay: 1.1
+                  max_endpointing_delay: 5
+                  min_interruption_duration: 1.1
+              phoneNumbers:
+                - '07012340001'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    patch:
+      x-fern-examples:
+        - path-parameters:
+            accountId: accountId
+            agentId: agentId
+          response:
+            body:
+              agentId: cmagent123
+              name: 고객 지원 에이전트
+              instructions: 당신은 친절하고 유능한 한국어 음성 에이전트입니다. 사용자의 요청을 주의 깊게 듣고 정확하고 간결하게 답하세요.
+              greeting: true
+              language: ko
+              model: gpt-realtime-2.1-mini
+              voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+              voiceProvider: cartesia
+              voiceModel: sonic-3.5
+              configuration:
+                outputMode: realtime_voice
+                language: ko
+                knowledge:
+                  enabled: true
+                  topK: 3
+                stt:
+                  provider: openai
+                  model: gpt-4o-transcribe
+                  language: ko
+                  prompt: 사용자의 음성을 정확하게 인식하여 텍스트로 변환하세요.
+                  temperature: 0.5
+                  detect_language: true
+                  noise_reduction_type: near_field
+                  use_realtime: true
+                llm:
+                  provider: openai-realtime
+                  model: gpt-realtime-2.1-mini
+                  voice: marin
+                tts:
+                  provider: cartesia
+                  model: sonic-3.5
+                  voice: 7706804e-ea85-443a-968a-b9bf363bdde8
+                  language: ko
+                  speed: 1.1
+                  volume: 1.1
+                vad:
+                  provider: silero
+                  min_silence_duration: 1
+                  min_speech_duration: 0.5
+                  prefix_padding_duration: 1
+                  max_buffered_speech: 30
+                  activation_threshold: 0.5
+                  sample_rate: 16000
+                  force_cpu: true
+                session:
+                  turn_detection: vad
+                  allow_interruptions: true
+                  min_endpointing_delay: 1
+                  max_endpointing_delay: 5
+                  min_interruption_duration: 1
+              phoneNumbers:
+                - '07012340001'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/dictionaries:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          response:
+            body:
+              dictionaries:
+                - id: clx9dict0001
+                  name: 우리 회사 용어
+                  isDefault: true
+                  itemCount: 12
+                  createdAt: '2024-01-15T09:30:00Z'
+                  updatedAt: '2024-01-15T09:30:00Z'
+                - id: clx9dict0002
+                  name: 고객 지원 용어
+                  isDefault: false
+                  itemCount: 25
+                  createdAt: '2024-02-10T11:00:00Z'
+                  updatedAt: '2024-04-01T08:45:00Z'
+                - id: clx9dict0003
+                  name: 기술 용어 사전
+                  isDefault: false
+                  itemCount: 40
+                  createdAt: '2024-03-05T14:20:00Z'
+                  updatedAt: '2024-05-10T16:30:00Z'
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          request:
+            name: 고객 지원 용어집
+          response:
+            body:
+              id: clx9dict0023
+              name: 고객 지원 용어집
+              isDefault: true
+              itemCount: 25
+              createdAt: '2024-04-10T08:45:00Z'
+              updatedAt: '2024-04-10T08:45:00Z'
+  /v1/accounts/AC1a2b3c4d/dictionaries/clx9dict0001:
+    patch:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+          response:
+            body:
+              id: clx9dict0001
+              name: 우리 회사 용어
+              isDefault: true
+              itemCount: 12
+              createdAt: '2024-01-15T09:30:00Z'
+              updatedAt: '2024-01-15T09:30:00Z'
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+          response:
+            body:
+              ok: true
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+          response:
+            body:
+              id: clx9dict0001
+              name: 우리 회사 용어
+              isDefault: true
+              itemCount: 12
+              createdAt: '2024-01-15T09:30:00Z'
+              updatedAt: '2024-04-10T11:45:00Z'
+              items:
+                - id: clx9term0001
+                  term: 클로옵스
+                  canonical: ClawOps
+                  enabled: true
+                  createdAt: '2024-01-15T09:30:00Z'
+                - id: clx9term0002
+                  term: 에이아이
+                  canonical: AI
+                  enabled: true
+                  createdAt: '2024-02-01T14:20:00Z'
+                - id: clx9term0003
+                  term: 빅데이터
+                  canonical: Big Data
+                  enabled: true
+                  createdAt: '2024-02-10T08:15:00Z'
+                - id: clx9term0004
+                  term: 클라우드
+                  canonical: Cloud
+                  enabled: true
+                  createdAt: '2024-02-15T10:00:00Z'
+                - id: clx9term0005
+                  term: 머신러닝
+                  canonical: Machine Learning
+                  enabled: true
+                  createdAt: '2024-03-01T09:45:00Z'
+                - id: clx9term0006
+                  term: 데브옵스
+                  canonical: DevOps
+                  enabled: true
+                  createdAt: '2024-03-05T13:30:00Z'
+                - id: clx9term0007
+                  term: 인터페이스
+                  canonical: Interface
+                  enabled: true
+                  createdAt: '2024-03-10T11:00:00Z'
+                - id: clx9term0008
+                  term: 알고리즘
+                  canonical: Algorithm
+                  enabled: true
+                  createdAt: '2024-03-15T15:20:00Z'
+                - id: clx9term0009
+                  term: 네트워크
+                  canonical: Network
+                  enabled: true
+                  createdAt: '2024-03-20T10:10:00Z'
+                - id: clx9term0010
+                  term: 데이터베이스
+                  canonical: Database
+                  enabled: true
+                  createdAt: '2024-03-25T09:00:00Z'
+                - id: clx9term0011
+                  term: 프로그래밍
+                  canonical: Programming
+                  enabled: true
+                  createdAt: '2024-04-01T14:50:00Z'
+                - id: clx9term0012
+                  term: API
+                  canonical: null
+                  enabled: true
+                  createdAt: '2024-04-05T12:30:00Z'
+  /v1/accounts/AC1a2b3c4d/dictionaries/clx9dict0001/terms:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+          request:
+            term: 클로옵스
+          response:
+            body:
+              id: clx9term0001
+              term: 클로옵스
+              canonical: ClawOps
+              enabled: true
+              createdAt: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/dictionaries/clx9dict0001/terms/clx9term0001:
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+            itemId: clx9term0001
+          response:
+            body:
+              ok: true
+    patch:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            dictionaryId: clx9dict0001
+            itemId: clx9term0001
+          response:
+            body:
+              id: clx9term0001
+              term: 클로옵스
+              canonical: ClawOps
+              enabled: true
+              createdAt: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/sip-endpoints/SE1a2b3c4d:
+    put:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+          request:
+            name: trunk-1-updated
+            status: active
+          response:
+            body:
+              id: SE1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: Acme 본사 트렁크
+              maxConcurrent: 50
+              status: active
+              routes:
+                - id: RT1234567890
+                  endpointId: SE1a2b3c4d
+                  uri: sip:pbx.acme.com:5060
+                  priority: 10
+                  weight: 100
+                  transport: udp
+                  status: active
+                  lastUsedAt: '2024-01-15T09:30:00Z'
+                  lastFailureAt: '2024-01-15T08:45:00Z'
+                  failureCount: 0
+                  dateCreated: '2024-01-10T12:00:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+              dateCreated: '2024-01-10T12:00:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+          response:
+            body:
+              id: SE1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: Acme 본사 트렁크
+              maxConcurrent: 50
+              status: active
+              routes:
+                - id: RT12345678
+                  endpointId: SE1a2b3c4d
+                  uri: sip:pbx.acme.com:5060
+                  priority: 10
+                  weight: 100
+                  transport: udp
+                  status: active
+                  lastUsedAt: '2024-01-15T09:30:00Z'
+                  lastFailureAt: '2024-01-10T14:20:00Z'
+                  failureCount: 2
+                  dateCreated: '2023-12-01T08:00:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+              dateCreated: '2023-11-20T07:45:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+          response:
+            body:
+              ok: true
+  /v1/accounts/AC1a2b3c4d/call-batches/clx1a2b3c4d5e/tasks:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            batchId: clx1a2b3c4d5e
+          query-parameters:
+            status: done
+            page: 1
+            pageSize: 50
+          response:
+            body:
+              tasks:
+                - taskId: task_9f8b7c6d5e4a3b2c1d0e
+                  to: '01098765432'
+                  status: pending
+                  attempt: 1
+                  dialRound: 2
+                  nextAttemptAt: '2024-01-15T09:30:00Z'
+                  expectedDialAt: '2024-01-15T09:30:00Z'
+                  callId: call_1234abcd5678efgh
+                  disposition: no-answer
+                  answeredBy: human
+                  result:
+                    surveyScore: 4
+                    appointmentConfirmed: true
+                    comments: Customer requested callback next week
+                  lastError: null
+                  messageKind: first
+                  messageStatus: pending
+                  messageDeliveryStatus: queued
+                  messageError: null
+  /v1/accounts/AC1a2b3c4d/sip-endpoints:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          request:
+            name: Acme 본사 트렁크
+          response:
+            body:
+              id: ep_9f8b7c6d5a4e3f2b1c0d
+              accountId: AC1a2b3c4d
+              name: Acme 본사 트렁크
+              maxConcurrent: 50
+              status: active
+              routes:
+                - id: route_123abc456def7890
+                  endpointId: ep_9f8b7c6d5a4e3f2b1c0d
+                  uri: sip:pbx.acme.com:5060
+                  priority: 10
+                  weight: 100
+                  transport: udp
+                  status: active
+                  lastUsedAt: '2024-01-15T09:30:00Z'
+                  lastFailureAt: '2024-01-10T08:15:00Z'
+                  failureCount: 2
+                  dateCreated: '2024-01-01T12:00:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+              dateCreated: '2024-01-01T12:00:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            page: 0
+            pageSize: 20
+            status: active
+          response:
+            body:
+              data:
+                - id: EP1234567890
+                  accountId: AC1a2b3c4d
+                  name: Acme 본사 트렁크
+                  maxConcurrent: 50
+                  status: active
+                  routes:
+                    - id: RT9876543210
+                      endpointId: EP1234567890
+                      uri: sip:pbx.acme.com:5060
+                      priority: 10
+                      weight: 100
+                      transport: udp
+                      status: active
+                      lastUsedAt: '2024-04-20T14:45:00Z'
+                      lastFailureAt: '2024-04-18T08:15:00Z'
+                      failureCount: 2
+                      dateCreated: '2024-01-15T09:30:00Z'
+                      dateUpdated: '2024-04-20T14:45:00Z'
+                  dateCreated: '2024-01-15T09:30:00Z'
+                  dateUpdated: '2024-04-20T14:45:00Z'
+              meta:
+                page: 0
+                pageSize: 20
+                total: 1
+  /v1/accounts/AC1a2b3c4d/sip-endpoints/SE1a2b3c4d/routes:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+          request:
+            uri: sip:pbx-primary.acme.com:5060
+          response:
+            body:
+              id: route_9f8b7c6d5e4a3b2c1d0e
+              endpointId: SE1a2b3c4d
+              uri: sip:pbx-primary.acme.com:5060
+              priority: 10
+              weight: 100
+              transport: udp
+              status: active
+              lastUsedAt: '2024-01-15T09:30:00Z'
+              lastFailureAt: '2024-01-10T08:15:00Z'
+              failureCount: 2
+              dateCreated: '2024-01-01T12:00:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+          response:
+            body:
+              data:
+                - id: RO1234567890abcdef
+                  endpointId: SE1a2b3c4d
+                  uri: sip:pbx.examplecorp.com:5060
+                  priority: 5
+                  weight: 50
+                  transport: udp
+                  status: active
+                  lastUsedAt: '2024-04-20T14:22:00Z'
+                  lastFailureAt: '2024-04-18T08:15:00Z'
+                  failureCount: 2
+                  dateCreated: '2023-12-01T10:00:00Z'
+                  dateUpdated: '2024-04-20T14:22:00Z'
+  /v1/accounts/AC1a2b3c4d/sip-endpoints/SE1a2b3c4d/routes/SR1a2b3c4d:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+            routeId: SR1a2b3c4d
+          response:
+            body:
+              id: SR1a2b3c4d
+              endpointId: SE1a2b3c4d
+              uri: sip:pbx.acme.com:5060
+              priority: 10
+              weight: 100
+              transport: udp
+              status: active
+              lastUsedAt: '2024-04-20T14:22:00Z'
+              lastFailureAt: '2024-04-18T08:15:00Z'
+              failureCount: 2
+              dateCreated: '2023-12-01T10:00:00Z'
+              dateUpdated: '2024-04-19T16:45:00Z'
+    put:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+            routeId: SR1a2b3c4d
+          request:
+            uri: sip:trunk.voipprovider.com:5060
+            priority: 5
+            status: active
+          response:
+            body:
+              id: SR1a2b3c4d
+              endpointId: SE1a2b3c4d
+              uri: sip:pbx.acme.com:5060
+              priority: 5
+              weight: 100
+              transport: udp
+              status: active
+              lastUsedAt: '2024-01-15T09:30:00Z'
+              lastFailureAt: '2024-01-10T14:20:00Z'
+              failureCount: 2
+              dateCreated: '2023-12-01T08:00:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            endpointId: SE1a2b3c4d
+            routeId: SR1a2b3c4d
+          response:
+            body:
+              ok: true
+  /v1/accounts/AC1a2b3c4d/sip-ip-acls:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            page: 0
+            pageSize: 20
+            status: active
+          response:
+            body:
+              data:
+                - id: ACL1234567890
+                  accountId: AC1a2b3c4d
+                  name: 본사 사무실 IP
+                  cidrs:
+                    - 203.0.113.0/24
+                  status: active
+                  dateCreated: '2024-01-15T09:30:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+              meta:
+                page: 1
+                pageSize: 1
+                total: 1
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          request:
+            name: Headquarters Office IPs
+          response:
+            body:
+              id: acl_9f8e7d6c5b4a3e2f1d0c
+              accountId: AC1a2b3c4d
+              name: Headquarters Office IPs
+              cidrs:
+                - 203.0.113.0/24
+              status: active
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/sip-credentials/SC1a2b3c4d:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            credentialId: SC1a2b3c4d
+          response:
+            body:
+              id: SC1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: Acme WebRTC 앱
+              username: webrtc_acme01
+              realm: ac1a2b3c4d.sip.claw-ops.com
+              enabled: true
+              status: active
+              ipAclId: IPACL123456
+              allowedNumbers:
+                - '+821012345678'
+              lastUsedAt: '2024-01-15T09:30:00Z'
+              dateCreated: '2024-01-10T08:00:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            credentialId: SC1a2b3c4d
+          response:
+            body:
+              ok: true
+    put:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            credentialId: SC1a2b3c4d
+          request:
+            name: agent-1-updated
+            status: active
+          response:
+            body:
+              id: SC1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: Acme WebRTC 앱
+              username: webrtc_acme01
+              realm: ac1a2b3c4d.sip.claw-ops.com
+              enabled: true
+              status: active
+              ipAclId: IPACL123456
+              allowedNumbers:
+                - '+821012345678'
+              lastUsedAt: '2024-01-15T09:30:00Z'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/sip-ip-acls/SA1a2b3c4d:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            aclId: SA1a2b3c4d
+          response:
+            body:
+              id: SA1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: 본사 사무실 IP
+              cidrs:
+                - 203.0.113.0/24
+                - 198.51.100.14/32
+              status: active
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-04-10T11:45:00Z'
+    put:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            aclId: SA1a2b3c4d
+          request:
+            name: headquarters-ip-acl
+            cidrs:
+              - 198.51.100.0/24
+              - 203.0.113.0/24
+            status: active
+          response:
+            body:
+              id: SA1a2b3c4d
+              accountId: AC1a2b3c4d
+              name: 본사 사무실 IP
+              cidrs:
+                - 198.51.100.0/24
+                - 203.0.113.0/24
+              status: active
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-04-20T11:45:00Z'
+    delete:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            aclId: SA1a2b3c4d
+          response:
+            body:
+              ok: true
+  /v1/accounts/AC1a2b3c4d/sip-credentials:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          request:
+            name: Acme WebRTC 앱
+            username: webrtc_acme01
+          response:
+            body:
+              id: SC1234567890abcdef
+              accountId: AC1a2b3c4d
+              name: Acme WebRTC 앱
+              username: webrtc_acme01
+              realm: ac1a2b3c4d.sip.claw-ops.com
+              enabled: true
+              status: active
+              ipAclId: IPACL987654321
+              allowedNumbers:
+                - '+821012345678'
+              lastUsedAt: '2024-01-15T09:30:00Z'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:30:00Z'
+              password: X7f9v2LpQ4s8Z0mN3rT6wY1bEjKdVxHa
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            page: 0
+            pageSize: 20
+            status: active
+          response:
+            body:
+              data:
+                - id: SC1234567890abcdef
+                  accountId: AC1a2b3c4d
+                  name: Acme WebRTC 앱
+                  username: webrtc_acme01
+                  realm: ac1a2b3c4d.sip.claw-ops.com
+                  enabled: true
+                  status: active
+                  ipAclId: IPACL9876543210
+                  allowedNumbers:
+                    - '+821012345678'
+                  lastUsedAt: '2024-01-15T09:30:00Z'
+                  dateCreated: '2024-01-10T08:00:00Z'
+                  dateUpdated: '2024-01-15T09:30:00Z'
+              meta:
+                page: 1
+                pageSize: 1
+                total: 1
+  /v1/accounts/AC1a2b3c4d/mobile-gateways/enrollment-tokens:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          response:
+            body:
+              token: 4fG7hJkLmNpQrStUvWxYzAbCdEfGhIjKlMnOpQrStUvWxYz12
+              expiresAt: '2024-07-01T12:00:00Z'
+  /v1/accounts/AC1a2b3c4d/webhooks/WH1a2b3c4d/logs:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            webhookId: WH1a2b3c4d
+          query-parameters:
+            page: 0
+            pageSize: 20
+          response:
+            body:
+              data:
+                - id: log_9f8e7d6c5b4a3e2f1d0c
+                  webhookId: WH1a2b3c4d
+                  event: message.delivered
+                  requestUrl: https://hooks.example.com/webhook/message
+                  requestPayload:
+                    messageId: msg_1234567890
+                    recipient: '+821012345678'
+                    status: delivered
+                  responseStatus: 200
+                  responseBody: '{"success":true}'
+                  responseTimeMs: 150
+                  status: delivered
+                  attempt: 1
+                  maxAttempts: 3
+                  createdAt: '2024-01-15T09:30:00Z'
+                  completedAt: '2024-01-15T09:30:00Z'
+              meta:
+                page: 0
+                pageSize: 20
+                total: 57
+  /v1/accounts/AC1a2b3c4d/assignment-links:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            status: pending
+            pageSize: 20
+            page: 0
+          response:
+            body:
+              data:
+                - linkId: FUjxM9qBBy_EIZp7QizzWSqXyUqqmrsnviw7PLdDI5w
+                  url: https://platform.claw-ops.com/assign/FUjxM9qBBy_EIZp7QizzWSqXyUqqmrsnviw7PLdDI5w
+                  status: pending
+                  createdAt: '2024-01-15T09:30:00Z'
+                  expiresAt: '2024-01-22T09:30:00Z'
+                  consumedAt: null
+                  webhookUrl: https://webhooks.example.com/assignment
+                  webhookMethod: POST
+                  note: Initial assignment link for customer onboarding
+                  webhookHeaders:
+                    X-Webhook-Token: tenant-secret-abc123
+                  assignment: null
+              meta:
+                page: 0
+                pageSize: 20
+                total: 1
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          response:
+            body:
+              token: a1b2c3d4e5f6g7h8i9j0
+              url: https://assign.claw-ops.com/link/a1b2c3d4e5f6g7h8i9j0
+              expiresAt: '2024-01-15T09:30:00Z'
+  /v1/accounts/AC1a2b3c4d/calls:
+    post:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          request:
+            To: '01098765432'
+            From: '07012345678'
+          response:
+            body:
+              callId: CA1234abcd5678efgh
+              status: queued
+              to: '01098765432'
+              from: '07012345678'
+              direction: outbound
+              duration: 30
+              accountId: AC1a2b3c4d
+              answeredBy: human
+              recordingUrl: /v1/accounts/AC1a2b3c4d/recordings/CA1234abcd5678efgh
+              transferTo: '01087654321'
+              transferStatus: completed
+              transferDuration: 60
+              transferHangupCauseQ850: 16
+              transferSipResponseCode: 200
+              transferReasonText: CS_NORMAL_RELEASE
+              transfers:
+                - sequence: 1
+                  to: '01087654321'
+                  mode: warm
+                  destinationType: pstn
+                  status: completed
+                  duration: 60
+                  billable: true
+                  billableDuration: 60
+                  hangupCauseQ850: 16
+                  sipResponseCode: 200
+                  reasonText: Normal call completion
+                  startedAt: '2024-01-15T09:30:00Z'
+                  connectedAt: '2024-01-15T09:31:00Z'
+                  endedAt: '2024-01-15T09:32:00Z'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:32:00Z'
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            status: completed
+            from: '07052358010'
+            to: '01012345678'
+            number: '07012345678'
+            pageSize: 20
+            page: 0
+          response:
+            body:
+              data:
+                - callId: CA1234567890abcdef
+                  status: queued
+                  to: '01098765432'
+                  from: '07012345678'
+                  direction: outbound
+                  duration: 30
+                  accountId: AC1a2b3c4d
+                  answeredBy: human
+                  recordingUrl: /v1/accounts/AC1a2b3c4d/recordings/CA1234567890abcdef
+                  transferTo: '01098765432'
+                  transferStatus: completed
+                  transferDuration: 60
+                  transferHangupCauseQ850: 16
+                  transferSipResponseCode: 200
+                  transferReasonText: CS_NORMAL_RELEASE
+                  transfers:
+                    - sequence: 1
+                      to: '01098765432'
+                      mode: warm
+                      destinationType: pstn
+                      status: completed
+                      duration: 60
+                      billable: true
+                      billableDuration: 60
+                      hangupCauseQ850: 16
+                      sipResponseCode: 200
+                      reasonText: Normal call clearing
+                      startedAt: '2024-01-15T09:30:00Z'
+                      connectedAt: '2024-01-15T09:31:00Z'
+                      endedAt: '2024-01-15T09:32:00Z'
+                  dateCreated: '2024-01-15T09:30:00Z'
+                  dateUpdated: '2024-01-15T09:32:00Z'
+              meta:
+                page: 1
+                pageSize: 1
+                total: 1
+  /v1/accounts/AC1a2b3c4d/messages:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          query-parameters:
+            type: sms
+            status: queued
+            pageSize: 20
+            page: 0
+          response:
+            body:
+              data:
+                - messageId: MGf9b8c7d6e5a4b3c2
+                  status: sent
+                  type: sms
+                  subject: null
+                  to: '01098765432'
+                  from: '07012345678'
+                  body: 안녕하세요, 주문하신 상품이 발송되었습니다.
+                  numMedia: 0
+                  mediaUrl: []
+                  direction: outbound
+                  accountId: AC1a2b3c4d
+                  dateCreated: '2024-04-20T14:22:00Z'
+                  dateUpdated: '2024-04-20T14:25:00Z'
+              meta:
+                page: 1
+                pageSize: 1
+                total: 1
+  /v1/accounts/AC1a2b3c4d/calls/CAabcdef1234567890:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            callId: CAabcdef1234567890
+          response:
+            body:
+              callId: CAabcdef1234567890
+              status: queued
+              to: '01098765432'
+              from: '07052358010'
+              direction: outbound
+              duration: 30
+              accountId: AC1a2b3c4d
+              answeredBy: human
+              recordingUrl: /v1/accounts/AC1a2b3c4d/recordings/CAabcdef1234567890
+              transferTo: '01087654321'
+              transferStatus: completed
+              transferDuration: 60
+              transferHangupCauseQ850: 16
+              transferSipResponseCode: 200
+              transferReasonText: CS_NORMAL_RELEASE
+              transfers:
+                - sequence: 1
+                  to: '01087654321'
+                  mode: warm
+                  destinationType: pstn
+                  status: completed
+                  duration: 60
+                  billable: true
+                  billableDuration: 60
+                  hangupCauseQ850: 16
+                  sipResponseCode: 200
+                  reasonText: Normal call clearing
+                  startedAt: '2024-01-15T09:30:00Z'
+                  connectedAt: '2024-01-15T09:31:00Z'
+                  endedAt: '2024-01-15T09:32:00Z'
+              dateCreated: '2024-01-15T09:30:00Z'
+              dateUpdated: '2024-01-15T09:32:00Z'
+  /v1/accounts/AC1a2b3c4d/call-batches:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+          response:
+            body:
+              callBatches:
+                - batchId: clx7f9d2a3b4c
+                  name: August Appointment Reminders
+                  status: draft
+                  from: '07012345678'
+                  callFlowId: cf_9a8b7c6d5e4f3g2h1i
+                  agentId: agent_42x9y8z7
+                  url: https://voice.example.com/flow/12345
+                  maxConcurrency: 10
+                  pacingPerMinute: 30
+                  timezone: Asia/Seoul
+                  windows:
+                    - start: '09:00'
+                      end: '18:00'
+                      days:
+                        - mon
+                        - tue
+                        - wed
+                        - thu
+                        - fri
+                  startAt: '2024-08-01T09:00:00Z'
+                  endAt: '2024-08-31T18:00:00Z'
+                  machineDetection: Enable
+                  retryPolicy:
+                    delaysMinutes:
+                      - 5
+                      - 15
+                      - 30
+                    retryOn:
+                      - no-answer
+                      - busy
+                      - failed
+                  messagePolicy:
+                    onFirstFail:
+                      body: We missed your call. Please contact us to reschedule your appointment.
+                    onFinalFail:
+                      body: Unable to reach you after multiple attempts. Please call us at 070-1234-5678.
+                  warnings:
+                    - 07012345678 번호로 문자가 전송된 이력이 없습니다. 문자 발신번호 등록은 음성과 별개 절차라, 등록되지 않은 번호는 발송 요청은 성공해도 통신사에서 전량 거절될 수 있습니다.
+                  dateCreated: '2024-07-20T08:00:00Z'
+                  dateUpdated: '2024-07-25T12:00:00Z'
+                  counts:
+                    pending: 120
+                    dialing: 3
+                    done: 77
+  /v1/accounts/AC1a2b3c4d/call-batches/clx1a2b3c4d5e:
+    get:
+      x-fern-examples:
+        - path-parameters:
+            accountId: AC1a2b3c4d
+            batchId: clx1a2b3c4d5e
+          response:
+            body:
+              batchId: clx1a2b3c4d5e
+              name: 7월 예약 확인
+              status: draft
+              from: '07052358010'
+              callFlowId: cfw9x8y7z6w5v
+              agentId: agent12345
+              url: https://voice.example.com/flow/123
+              maxConcurrency: 10
+              pacingPerMinute: 30
+              timezone: Asia/Seoul
+              windows:
+                - start: '09:00'
+                  end: '18:00'
+                  days:
+                    - mon
+                    - tue
+                    - wed
+                    - thu
+                    - fri
+              startAt: '2024-01-15T09:30:00Z'
+              endAt: '2024-01-15T18:00:00Z'
+              machineDetection: Enable
+              retryPolicy:
+                delaysMinutes:
+                  - 5
+                  - 15
+                  - 30
+                retryOn:
+                  - no-answer
+                  - busy
+                  - failed
+              messagePolicy:
+                onFirstFail:
+                  body: 고객님, 예약 확인이 되지 않아 연락드립니다. 문의사항은 070-1234-5678로 연락주세요.
+                onFinalFail:
+                  body: 예약 확인이 완료되지 않았습니다. 고객센터(070-1234-5678)로 문의 바랍니다.
+              warnings:
+                - 07052358010 번호로 문자가 전송된 이력이 없습니다. 문자 발신번호 등록은 음성과 별개 절차라, 등록되지 않은 번호는 발송 요청은 성공해도 통신사에서 전량 거절될 수 있습니다.
+              dateCreated: '2024-01-10T08:00:00Z'
+              dateUpdated: '2024-01-12T12:00:00Z'
+              counts:
+                pending: 120
+                dialing: 3
+                done: 77
