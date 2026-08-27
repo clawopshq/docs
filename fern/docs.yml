@@ -56,6 +56,9 @@ navigation:
           - page: 문자 메시지
             path: docs/pages/guides/messages.mdx
             icon: comment-sms
+          - page: 통화 전환 결과
+            path: docs/pages/guides/call-transfers.mdx
+            icon: right-left
       - section: SDKs
         contents:
           - page: TypeScript / JavaScript
