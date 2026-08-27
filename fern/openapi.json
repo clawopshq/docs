@@ -2506,8 +2506,8 @@
                   },
                   "StatusCallbackEvent": {
                     "type": "string",
-                    "example": "initiated ringing answered completed",
-                    "description": "수신할 상태 이벤트 목록 (공백 구분). 기본값: initiated ringing answered completed"
+                    "example": "initiated ringing answered completed transfer",
+                    "description": "수신할 상태 이벤트 목록(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Webhooks](/webhooks).\n"
                   },
                   "MachineDetection": {
                     "type": "string",
@@ -12204,7 +12204,7 @@
           "transferTo": {
             "type": "string",
             "nullable": true,
-            "description": "통화 전환 대상 번호 (전환이 없으면 null)",
+            "description": "전환 대상 번호. **읽기 전용** — 값을 지정하는 요청 필드는 없고 실제로 일어난 전환의\n결과가 기록됩니다. 전환이 없었으면 null.\n\n에이전트 전환과 SIP REFER 전환에서만 채워집니다(VoiceML `<Dial>` 은 제외 — 그 결과는\n`DialCallStatus` 로 받습니다).\n\n**전체 설명은 [통화 전환 결과](/call-transfers) 가 정본입니다.**\n",
             "example": "01012345678"
           },
           "transferStatus": {
@@ -12218,12 +12218,12 @@
               "canceled",
               null
             ],
-            "description": "통화 전환 결과"
+            "description": "전환 결과(읽기 전용, 전환이 없었으면 null).\n\ncompleted(연결 후 정상 종료) / no-answer(대상이 받지 않음) / busy(통화중) /\ncanceled(연결 전에 취소·중단) / failed(그 외 실패 — 사유는 transferHangupCauseQ850 ·\ntransferSipResponseCode · transferReasonText).\n\n**종료된 전환의 결과만 담습니다.** 진행 중 상태는 transfers[].status 또는 Status Callback\n의 `transfer` 이벤트로 보세요.\n"
           },
           "transferDuration": {
             "type": "integer",
             "nullable": true,
-            "description": "전환 후 통화 시간 (초)",
+            "description": "전환 통화 시간(초) — 대상이 받은 시점부터 그 전환 leg 가 끝날 때까지의 **관측값**입니다.\n연결되지 못한 전환은 null.\n\n⚠️ 과금 초가 아닙니다. 과금 대상 초는 transfers[].billableDuration 입니다.\n",
             "example": 60
           },
           "transferHangupCauseQ850": {
@@ -12246,7 +12246,7 @@
           },
           "transfers": {
             "type": "array",
-            "description": "전환 leg 정본 체인(sequence 순). 다단계/재시도 전환의 전체 이력을 제공한다. 위 transfer* 단일\n필드는 하위호환용 대표 leg(마지막 completed). 단건 조회에만 포함되며(리스트 응답엔 생략),\n전환이 없었던 통화는 빈 배열.\n",
+            "description": "전환 leg 정본 체인(sequence 순). 다단계/재시도 전환의 전체 이력을 제공한다. **단건 조회에만\n포함되며(리스트 응답엔 생략)**, 전환이 없었던 통화는 빈 배열.\n\n위 transfer* 단일 필드는 이 체인에서 파생한 하위호환용 **대표 leg** 다 — 종료된 leg 중\ncompleted 우선, 동률이면 sequence 최대. 전체 시도는 이 배열로 본다.\n",
             "items": {
               "type": "object",
               "properties": {
@@ -12256,17 +12256,18 @@
                 },
                 "to": {
                   "type": "string",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "전환 대상 번호 또는 SIP URI"
                 },
                 "mode": {
                   "type": "string",
                   "nullable": true,
-                  "description": "blind | warm | refer"
+                  "description": "blind | warm | refer | refer-attended"
                 },
                 "destinationType": {
                   "type": "string",
                   "nullable": true,
-                  "description": "pstn | sip | number"
+                  "description": "pstn(통신망 번호) | sip(SIP URI 직결)"
                 },
                 "status": {
                   "type": "string",
@@ -12289,30 +12290,36 @@
                 },
                 "hangupCauseQ850": {
                   "type": "integer",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "이 leg 의 통신망 Q.850 cause. 사유 미상이면 null"
                 },
                 "sipResponseCode": {
                   "type": "integer",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "이 leg 의 SIP 응답코드. 사유 미상이면 null"
                 },
                 "reasonText": {
                   "type": "string",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "통신망 원본 진단 텍스트(자유 형식 — 분기 조건으로 쓰지 말 것)"
                 },
                 "startedAt": {
                   "type": "string",
                   "format": "date-time",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "전환을 시작한 시각"
                 },
                 "connectedAt": {
                   "type": "string",
                   "format": "date-time",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "대상이 받은 시각. 연결되지 못했으면 null"
                 },
                 "endedAt": {
                   "type": "string",
                   "format": "date-time",
-                  "nullable": true
+                  "nullable": true,
+                  "description": "이 leg 가 끝난 시각"
                 }
               }
             }
@@ -12509,8 +12516,8 @@
           "statusCallbackEvents": {
             "type": "string",
             "nullable": true,
-            "example": "ringing answered completed",
-            "description": "구독할 상태 이벤트(공백 구분). 미지정 시 기본 전체."
+            "example": "initiated ringing answered completed transfer",
+            "description": "구독할 상태 이벤트(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요.\n"
           },
           "numberType": {
             "type": "string",
