@@ -1,0 +1,91 @@
+---
+title: 카카오 알림톡
+description: 채널과 템플릿을 조회하고 ClawOps 리소스 ID로 카카오 알림톡을 발송하는 방법을 안내합니다.
+slug: kakao-alimtalk
+---
+
+카카오 알림톡은 검수된 템플릿으로 안내 메시지를 발송합니다. API에서 채널과 템플릿을 조회한 뒤 응답의 ClawOps 리소스 ID를 발송 요청에 사용합니다.
+
+## 알림톡 보내기
+
+### 1. 채널 조회
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+응답의 `data[].id`가 채널 리소스 ID입니다.
+
+```json title="응답"
+{
+  "data": [
+    {
+      "id": "clx9kak0001",
+      "searchId": "example",
+      "name": "러너스 고객센터",
+      "status": "connected"
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+### 2. 템플릿 조회
+
+채널 리소스 ID를 `channelId`에 전달합니다.
+
+```bash
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/templates?channelId=clx9kak0001" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+템플릿 자체의 식별자는 `id`입니다. 응답의 `channelId`는 이 템플릿이 속한 채널 리소스 ID입니다. `sendable`이 `true`인 템플릿을 고르고 `variables`에 나온 변수를 모두 채우세요.
+
+```json title="응답"
+{
+  "data": [
+    {
+      "id": "clx9tpl0001",
+      "channelId": "clx9kak0001",
+      "name": "주문 접수 안내",
+      "status": "approved",
+      "variables": ["고객명"],
+      "sendable": true
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+### 3. 발송
+
+채널 응답의 `id`를 `Kakao.ChannelId`에, 템플릿 응답의 `id`를 `Kakao.TemplateId`에 전달합니다.
+
+```bash
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/messages" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "To": "01012345678",
+    "From": "07012341234",
+    "Kakao": {
+      "ChannelId": "clx9kak0001",
+      "TemplateId": "clx9tpl0001",
+      "Variables": { "고객명": "홍길동" }
+    },
+    "Fallback": { "Body": "주문이 접수되었습니다." }
+  }'
+```
+
+<Info>
+  알림톡에는 `Body`를 넣지 않습니다. 본문과 버튼은 검수된 템플릿이 정하고 발송 시점에는 `Variables`만 채울 수 있습니다.
+</Info>
+
+`Fallback.Body`를 지정하면 알림톡 전달에 실패했을 때 해당 내용으로 문자를 발송합니다. 대체 문자를 원하지 않으면 `Fallback.Disabled`를 `true`로 지정하세요.
+
+<Warning>
+  응답의 `queued`는 발송 요청이 접수됐다는 뜻이며 전달 성공을 보장하지 않습니다. 최종 결과는 계정에 등록한 `message.sent` 또는 `message.failed` webhook으로 확인하세요.
+</Warning>
+
+문자 메시지 발송이 필요하다면 [문자 메시지 가이드](/guides/messages)를 확인하세요.

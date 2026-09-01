@@ -56,6 +56,9 @@ navigation:
           - page: 문자 메시지
             path: docs/pages/guides/messages.mdx
             icon: comment-sms
+          - page: 카카오 알림톡
+            path: docs/pages/guides/kakao-alimtalk.mdx
+            icon: comment
           - page: 통화 전환 결과
             path: docs/pages/guides/call-transfers.mdx
             icon: right-left
