@@ -38,6 +38,10 @@
       "description": "SMS/LMS/MMS 메시지 발송 및 조회"
     },
     {
+      "name": "KakaoChannels",
+      "description": "카카오 비즈니스 채널 연결. 담당자 휴대전화로 받은 인증번호로 채널 소유를 증명해 계정에 연결하고, 연결 상태를 조회합니다. 인증번호는 담당자 휴대전화로만 전달되며 API 응답에 실리지 않습니다. 알림톡 템플릿과 발송은 아직 제공하지 않습니다."
+    },
+    {
       "name": "Webhooks",
       "description": "이벤트 기반 Webhook 관리"
     },
@@ -74,6 +78,10 @@
       "description": "브라우저(WebRTC) / SIP 단말이 ClawOps 게이트웨이에 등록·발신하기 위한 단기 토큰과 ICE/TURN 서버 정보. 영구 SipCredential 1개로부터 짧은 TTL(최대 24시간) JWT 토큰을 발급해서 클라이언트에 전달하는 패턴."
     },
     {
+      "name": "Usage",
+      "description": "사용량 집계 조회. 통화 목록을 직접 합산하는 것과 달리 사후 정정과 청구 주기 경계가 반영된 확정값을 돌려줍니다. 관리번호 파트너는 groupBy=linkId 로 최종이용자별 사용량을 분리해 정산에 씁니다."
+    },
+    {
       "name": "MobileGateways",
       "description": "BT 휴대폰(chan_mobile) 게이트웨이 박스를 WireGuard 터널로 ClawOps SIP 에 붙이는 셀프 온보딩. 콘솔에서 1회용 enroll 토큰을 발급하고, 박스가 그 토큰으로 콜홈해 터널 IP 를 자동 할당받는다."
     }
@@ -103,6 +111,10 @@
                     "status",
                     "step",
                     "orgName",
+                    "brandLogoUrl",
+                    "brandServiceName",
+                    "brandColor",
+                    "returnUrl",
                     "subscriberType",
                     "assignedNumber"
                   ],
@@ -128,6 +140,22 @@
                     },
                     "orgName": {
                       "type": "string"
+                    },
+                    "brandLogoUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "brandServiceName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "brandColor": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "returnUrl": {
+                      "type": "string",
+                      "nullable": true
                     },
                     "subscriberType": {
                       "type": "string",
@@ -2507,7 +2535,7 @@
                   "StatusCallbackEvent": {
                     "type": "string",
                     "example": "initiated ringing answered completed transfer",
-                    "description": "수신할 상태 이벤트 목록(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Webhooks](/webhooks).\n"
+                    "description": "수신할 상태 이벤트 목록(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
                   },
                   "MachineDetection": {
                     "type": "string",
@@ -4779,7 +4807,7 @@
       "post": {
         "operationId": "sendMessage",
         "summary": "메시지 발송",
-        "description": "SMS/LMS/MMS 메시지를 발송합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\nKCT 통합메시징 Agent를 통해 실제 발송되며, 발송 결과는 webhook으로 비동기 수신합니다.\n\n### 메시지 타입별 사용법\n\n**SMS** (단문, 200byte 이하):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"안녕하세요\" }\n```\n\n**LMS** (장문, 2000자 이하, 첨부 없음):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"긴 내용...\", \"Type\": \"lms\", \"Subject\": \"제목\" }\n```\n\n**MMS** (이미지 첨부, 최대 3개):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"사진\", \"Type\": \"mms\", \"MediaUrl\": [\"https://example.com/photo.jpg\"] }\n```",
+        "description": "SMS/LMS/MMS 메시지를 발송합니다. From 번호는 계정에 등록된 번호여야 합니다.\n\nKCT 통합메시징 Agent를 통해 실제 발송되며, 발송 결과는 webhook으로 비동기 수신합니다.\n\n### 메시지 타입별 사용법\n\n**SMS** (단문, EUC-KR 90byte 이하 = 한글 45자):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"안녕하세요\" }\n```\n\n통신사 SMS 상한은 **EUC-KR 90byte** 입니다. 이를 넘겨 `Type: \"sms\"` 로 보내면\n`400 body_too_long` 입니다. **`Type` 을 생략하면 긴 본문은 LMS 로 자동 발송**되므로,\n길이가 런타임에 정해지는 경우(템플릿 치환 등)에는 생략하시는 편이 안전합니다.\n\n**LMS** (장문, 2000자 이하, 첨부 없음):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"긴 내용...\", \"Type\": \"lms\", \"Subject\": \"제목\" }\n```\n\n**MMS** (이미지 첨부, 최대 3개):\n```json\n{ \"To\": \"010...\", \"From\": \"070...\", \"Body\": \"사진\", \"Type\": \"mms\", \"MediaUrl\": [\"https://example.com/photo.jpg\"] }\n```\n\n**알림톡** (`Kakao` 를 실으면 알림톡입니다 — `Type` 은 생략하십시오):\n```json\n{\n  \"To\": \"010...\", \"From\": \"070...\",\n  \"Kakao\": {\n    \"ChannelId\": \"KA01PF...\", \"TemplateId\": \"KA01TP...\",\n    \"Variables\": { \"고객명\": \"홍길동\", \"#{금액}\": \"12,000\" }\n  },\n  \"Fallback\": { \"Body\": \"주문이 접수되었습니다.\" }\n}\n```\n\n알림톡은 **승인된 템플릿으로만** 보낼 수 있고, 본문·버튼·아이템 리스트는 템플릿에 검수된\n그대로 발송됩니다. 요청에서 바꿀 수 있는 것은 `Variables` 뿐입니다 — 본문의 `#{변수}` 는\n물론 **버튼 링크와 강조 문구에 들어간 변수도 같은 목록으로 채워집니다.**\n\n발송에 실패하면(수신자가 카카오톡을 쓰지 않는 등) `Fallback` 문구가 문자로 대신 나갑니다.\n이때 문자는 **별도의 메시지 1건**으로 기록되고 문자 단가로 청구됩니다.",
         "tags": [
           "Messages"
         ],
@@ -4803,8 +4831,7 @@
                 "type": "object",
                 "required": [
                   "To",
-                  "From",
-                  "Body"
+                  "From"
                 ],
                 "properties": {
                   "To": {
@@ -4819,7 +4846,7 @@
                   },
                   "Body": {
                     "type": "string",
-                    "description": "메시지 본문",
+                    "description": "메시지 본문. 문자에는 필수입니다.\n\n**알림톡에는 넣을 수 없습니다**(`400 kakao_body_not_allowed`) — 본문은 템플릿이\n정합니다. 대신 `Kakao.Variables` 를 채우십시오. 응답의 `body` 에는 변수를 치환한\n결과가 담깁니다.",
                     "example": "안녕하세요"
                   },
                   "Type": {
@@ -4827,10 +4854,10 @@
                     "enum": [
                       "sms",
                       "lms",
-                      "mms"
+                      "mms",
+                      "ata"
                     ],
-                    "default": "sms",
-                    "description": "메시지 유형 (기본: sms)"
+                    "description": "메시지 유형. **생략하면 실린 항목에 맞춰 자동으로 고릅니다** —\n`Kakao` 가 있으면 `ata`, `MediaUrl` 이 있으면 `mms`, `Subject` 가 있거나\n본문이 EUC-KR 90byte(한글 45자)를 넘으면 `lms`, 그 외에는 `sms` 입니다.\n\n명시하면 그대로 따릅니다. `sms` 로 명시한 본문이 90byte 를 넘으면\n`400 body_too_long` 입니다 — 잘린 채로 발송되지 않도록 막습니다.\n\n`ata` 와 `Kakao` 는 **서로를 요구합니다.** `Type: \"ata\"` 인데 `Kakao` 가 없거나,\n`Kakao` 를 실으면서 다른 `Type` 을 명시하면 `400` 입니다."
                   },
                   "Subject": {
                     "type": "string",
@@ -4848,6 +4875,73 @@
                     "example": [
                       "https://example.com/image.jpg"
                     ]
+                  },
+                  "IdempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "발송 멱등키. 같은 계정에서 같은 키로 다시 요청하면 **발송하지 않고**\n1회차 결과를 그대로 돌려줍니다. 재시도·재실행 경로가 있는 호출자만 채우십시오.\n\n미지정이면 매번 발송합니다(기존 동작). 빈 문자열은 `400` 입니다 — 템플릿에서\n빈 값이 들어가 멱등이 조용히 꺼진 채 중복 발송되는 걸 막습니다.\n\n⚠️ 순차 재시도를 막는 용도입니다. 같은 키로 **동시에** 두 요청이 들어오면\n둘 다 발송될 수 있습니다.\n\n⚠️ **본문이 달라도 검사하지 않습니다.** 같은 키로 다른 To/Body 를 보내면\n새 메시지는 발송되지 않고 1회차 결과가 `201` 로 돌아옵니다. 키는 *메시지 한 건*\n단위로 만드십시오(`order-1024-접수`·`order-1024-배송` 처럼). 만료도 없습니다 —\n한 번 쓴 키는 계정 안에서 영구히 같은 결과를 돌려줍니다.",
+                    "example": "order-1024-retry"
+                  },
+                  "Kakao": {
+                    "type": "object",
+                    "description": "카카오 알림톡으로 보냅니다. **이 항목이 있으면 알림톡입니다** — `Type` 은 생략하십시오.\n\n발신 채널과 템플릿은 콘솔의 「카카오톡 채널」·「알림톡 템플릿」에서 연결·승인한\n것이어야 합니다. 승인되지 않았거나 휴면 상태인 템플릿은 `422` 입니다.",
+                    "required": [
+                      "ChannelId",
+                      "TemplateId"
+                    ],
+                    "properties": {
+                      "ChannelId": {
+                        "type": "string",
+                        "description": "연결된 카카오톡 채널 ID.",
+                        "example": "KA01PF260828110007331eLFXWFtyVql"
+                      },
+                      "TemplateId": {
+                        "type": "string",
+                        "description": "승인된 알림톡 템플릿 ID.",
+                        "example": "KA01TP221025083117992xkz17KyvNbr"
+                      },
+                      "Variables": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "템플릿 변수. 키는 `고객명` 과 `#{고객명}` 을 **모두 받습니다.**\n\n템플릿이 요구하는 변수가 빠지면 `400 kakao_variable_missing`,\n템플릿에 없는 변수를 주면 `400 kakao_variable_unknown` 입니다.\n(카카오는 이런 요청도 접수한 뒤 조용히 실패시키므로 보내기 전에 막습니다.)\n\n버튼 링크나 강조 문구에 들어간 변수도 **같은 목록**에 포함됩니다.",
+                        "example": {
+                          "고객명": "홍길동",
+                          "#{금액}": "12,000"
+                        }
+                      }
+                    }
+                  },
+                  "Fallback": {
+                    "type": "object",
+                    "description": "알림톡이 발송 실패했을 때 대신 나갈 문자. 생략하면 **템플릿 본문을 그대로** 문자로 보냅니다.\n\n대체 발송된 문자는 별도의 메시지 1건으로 기록되며 문자 단가로 청구됩니다.",
+                    "properties": {
+                      "Body": {
+                        "type": "string",
+                        "description": "문자 본문. 생략하면 알림톡 본문(변수 치환 결과)을 씁니다.",
+                        "example": "주문이 접수되었습니다."
+                      },
+                      "Subject": {
+                        "type": "string",
+                        "description": "문자 제목(LMS/MMS)."
+                      },
+                      "Type": {
+                        "type": "string",
+                        "enum": [
+                          "sms",
+                          "lms",
+                          "mms"
+                        ],
+                        "description": "생략하면 본문 길이에 맞춰 자동으로 고릅니다."
+                      },
+                      "Disabled": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "`true` 면 알림톡이 실패해도 문자를 보내지 않습니다.\n발송 실패가 그대로 실패로 남습니다."
+                      }
+                    }
                   }
                 }
               }
@@ -5150,6 +5244,203 @@
           },
           "404": {
             "description": "메시지 또는 미디어를 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/usage": {
+      "get": {
+        "operationId": "getUsage",
+        "summary": "사용량 집계 조회",
+        "description": "계정의 사용량을 **집계된 형태로** 돌려줍니다. 통화 목록을 받아 직접 합산하는 것과 다릅니다 —\n\n- **사후 정정이 반영됩니다.** 통화 시간은 종료 후에도 정정될 수 있고(`durationOverride`,\n  늦은 finalize, 운영 보정), 이 API 는 호출 시점에 원장을 다시 집계하므로 그 정정이\n  항상 반영됩니다. 목록을 긁어 직접 쌓으면 이미 받아간 건의 정정이 반영되지 않아\n  청구서와 계속 어긋납니다.\n- **청구 주기 경계가 맞습니다.** 주기 시작은 일 경계가 아니라 가입 순간의 시각입니다.\n  달력 월로 합산하면 어긋납니다.\n- **통화 목록에 없는 미터도 포함됩니다.** 문자·전사·요약은 `call_logs` 에 없습니다.\n\n## 정산에 쓰는 축\n\n`groupBy=linkId` 가 관리번호 파트너의 정산 단위입니다. 이 값은 `assignment.completed`\nwebhook 의 `LinkId` 와 같아서 파트너가 자기 사용자와 바로 조인할 수 있습니다.\n관리번호로 발급되지 않은 번호는 `linkId` 가 `null` 로 묶입니다.\n\n⚠️ **번호(`groupBy=number`)를 정산 단위로 쓰지 마십시오.** 번호는 반납 후 재배정됩니다.\n같은 번호에 이전 이용자의 사용량이 섞이지 않도록 이 API 는 배정 구간으로 잘라 집계하지만,\n수신측에서 번호를 키로 누적하면 그 구분이 사라집니다.\n\n## 단위 — 초로 돌려줍니다\n\n통화·전사·요약은 **초**입니다. 청구는 계정 합계에 올림을 한 번만 겁니다\n(`ceil((발신+전환)/60)`). 축을 쪼갠 값을 각각 올림해 더하면 합계가 청구서보다 커지므로,\n올림한 분은 `totals[].billableMinutes` 에만 담습니다.\n\n## 금액\n\n`records` 에는 **수량만** 담깁니다. 단가가 누진 구간(발신 60 → 45 → 25원)이라 축별로\n금액을 나눌 수 없습니다 — 합계에만 정의됩니다.\n\n⚠️ **현재 `amount` 와 `totals[].unitPriceHint` 는 항상 `null` 입니다.** 금액 계산은 플랜\n포함량·누진 구간·애드온을 함께 봐야 해서 청구 경로를 재사용하는 후속 작업으로 남았습니다.\n지금은 **수량**에 자사 단가를 적용해 사용하십시오.",
+        "tags": [
+          "Usage"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "allowReserved": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "집계 시작(UTC, 포함). `to` 와 **함께** 주어야 합니다 — 한쪽만 주면 400.\n생략하면 현재 청구 주기 전체를 집계합니다.",
+            "example": "2026-08-01T00:00:00Z"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "allowReserved": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "집계 끝(UTC, **미포함**). 구간 최대 92일.",
+            "example": "2026-09-01T00:00:00Z"
+          },
+          {
+            "name": "groupBy",
+            "in": "query",
+            "required": false,
+            "description": "쪼갤 축. 반복 지정으로 조합합니다(`?groupBy=day&groupBy=linkId`).\n⚠️ 콤마 구분(`?groupBy=day,linkId`)은 받지 않습니다 — 값 검증을 유지하기 위한\n선택이라, 오타는 조용히 무시되지 않고 400 이 됩니다.\n생략하면 미터별 합계만 돌려줍니다.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "meter",
+                  "day",
+                  "linkId",
+                  "number"
+                ]
+              }
+            },
+            "example": [
+              "day",
+              "linkId"
+            ]
+          },
+          {
+            "name": "meter",
+            "in": "query",
+            "required": false,
+            "description": "특정 미터만 조회. 반복 지정(`?meter=a&meter=b`). 생략 시 전체.",
+            "example": [
+              "outbound_seconds",
+              "sms"
+            ],
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/UsageMeter"
+              }
+            }
+          },
+          {
+            "name": "includeToday",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "example": false,
+            "description": "진행 중인 오늘(UTC) 구간을 포함할지. 오늘 구간은 다시 조회할 때마다 값이 달라지고\n스캔 구간도 그만큼 늘어납니다. 정산은 확정 구간만 쓰는 것이 정상이므로 기본은 false 입니다."
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "example": 200,
+            "description": "페이지당 항목 수(기본 200, 최대 1000)."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "example": 200,
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "example": 200,
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "example": 1,
+            "description": "1-based 페이지 번호."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "집계 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`from`/`to` 중 하나만 지정 · 기간 역전 · 92일 초과 · `groupBy`/`meter` enum 외 값 ·\n`pageSize`/`page` 가 정수가 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "다른 계정의 사용량 조회, 또는 활성 구독이 없는 계정이 `from`/`to` 없이 호출\n(기본 구간인 청구 주기를 특정할 수 없음 — `from`/`to` 를 지정해 조회).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "계정 없음",
             "content": {
               "application/json": {
                 "schema": {
@@ -5716,6 +6007,18 @@
                     "type": "string",
                     "maxLength": 200,
                     "description": "내부 메모"
+                  },
+                  "ttlSeconds": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 604800,
+                    "description": "링크 만료까지의 시간(초). 미지정 시 기본 7일.\n⚠️ 이 범위는 services/assignment-links.ts 의 TTL_SECONDS_MIN/MAX 와 같은 값이어야 한다 —\n갈라지면 validator 가 먼저 400 을 내서 서비스 문구가 도달하지 않는다.\n"
+                  },
+                  "returnUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 2048,
+                    "description": "발급 완료 후 최종이용자를 되돌려 보낼 주소. host 가 계정에 등록된 허용 도메인과\n정확히 일치해야 하며(대시보드 설정 → 조직 → 발급 페이지), 아니면 400.\n미지정 시 완료 화면에 머문다.\n"
                   },
                   "webhookHeaders": {
                     "type": "object",
@@ -7588,6 +7891,645 @@
           },
           "409": {
             "description": "이미 종료된 배치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/kakao/channel-categories": {
+      "get": {
+        "operationId": "listKakaoChannelCategories",
+        "summary": "카카오 채널 카테고리 조회",
+        "description": "채널 연결 시 지정할 업종 카테고리 목록입니다. 계정마다 다른 값이 나오지는 않지만, 인증이 필요하므로\n경로에 `accountId` 가 있습니다.\n\n**값을 코드에 하드코딩하지 마세요.** 카테고리는 카카오/공급자 쪽에서 늘거나 바뀌는 열린 집합이고,\n이 응답이 그때그때의 정본입니다. 응답의 `code` 를 채널 연결 요청의 `categoryCode` 로 그대로 보냅니다.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "채널 카테고리 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannelCategoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "카카오 채널 서비스 일시 장애 (KAKAO_PROVIDER_UNAVAILABLE). 캐시가 비어 있고 공급자도 응답하지 않는 상태입니다 — 임의의 기본 목록으로 대체하지 않습니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/kakao/channels": {
+      "get": {
+        "operationId": "listKakaoChannels",
+        "summary": "카카오 채널 목록 조회",
+        "description": "이 계정에 연결된 카카오 비즈니스 채널을 조회합니다. 다른 계정의 채널은 나타나지 않습니다.\n\n**카카오 쪽 상태를 매번 확인하지는 않습니다.** 목록은 ClawOps 에 저장된 연결 정보를 그대로 돌려주므로 빠릅니다.\n실제 채널 상태까지 확인하려면 채널 상세 조회를 호출하세요 — 그 호출이 상태를 재확인하고 `status` 를 갱신합니다.\n\n인증번호만 요청하고 연결을 완료하지 않은 시도는 채널로 잡히지 않습니다.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "connected",
+                "needs_attention",
+                "all"
+              ],
+              "default": "all"
+            },
+            "description": "연결 상태 필터. 미지정 시 전체.",
+            "example": "connected"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "페이지 번호(0-based)",
+            "example": 0
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            },
+            "description": "페이지 크기(최대 100)",
+            "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "카카오 채널 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannelListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createKakaoChannel",
+        "summary": "카카오 채널 연결",
+        "description": "담당자 휴대전화로 받은 인증번호로 채널 연결을 완료합니다. **먼저 인증번호 요청을 호출해야 합니다.**\n\n앞 단계에서 보낸 `searchId` 와 `phoneNumber` 를 여기서 다시 보냅니다 — 서버는 등록 도중 상태를 저장하지 않습니다\n(미완료 상태의 담당자 전화번호를 남기지 않기 위해서입니다).\n\n**멱등입니다.** 이미 이 계정에 연결된 채널이면 인증번호를 소모하지 않고 기존 연결을 `200` 으로 돌려줍니다.\n새로 연결된 경우에만 `201` 입니다. 다른 계정에 이미 연결된 채널이면 멱등이 아니라 충돌이므로 `409` 입니다.\n\n**타임아웃되면 이 요청을 다시 보내지 마세요.** 이미 연결에 성공했을 수 있어 중복 등록을 시도하게 됩니다.\n대신 채널 목록이나 상세 조회로 실제 등록 여부를 확인한 뒤 결과를 확정하세요.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "searchId",
+                  "phoneNumber",
+                  "categoryCode",
+                  "token"
+                ],
+                "properties": {
+                  "searchId": {
+                    "type": "string",
+                    "description": "카카오 채널 검색용 ID. `@` 를 붙여 보내도 떼어내고 처리합니다.",
+                    "example": "example"
+                  },
+                  "phoneNumber": {
+                    "type": "string",
+                    "description": "인증번호를 받은 담당자 휴대전화번호. 하이픈·+82 형태 모두 허용됩니다.",
+                    "example": "010-1234-5678"
+                  },
+                  "categoryCode": {
+                    "type": "string",
+                    "description": "채널 업종 카테고리 코드. 채널 카테고리 조회 응답의 `code` 를 그대로 보냅니다.",
+                    "example": "00100010001"
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "담당자 휴대전화로 받은 인증번호. 저장하지 않고 확인에만 사용합니다.",
+                    "example": "394812"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "이미 이 계정에 연결된 채널 — 기존 연결을 그대로 반환(멱등)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannel"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "채널 연결 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION) — 검색용 ID·전화번호·카테고리 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "이미 다른 계정에 연결된 채널 (KAKAO_CHANNEL_ALREADY_LINKED) — 재시도해도 결과가 같습니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "인증번호 불일치 또는 만료 (KAKAO_TOKEN_INVALID) — 재입력하거나 인증번호를 다시 요청하세요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "공급자 호출량 제한 (KAKAO_RATE_LIMITED) — 잠시 후 재시도하세요. 이 응답은 연결이 **시도되지 않았다**는 뜻이라 인증번호는 아직 유효합니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "카카오 채널 서비스 일시 장애 또는 응답 지연 (KAKAO_PROVIDER_UNAVAILABLE). **재호출하지 말고** 목록·상세 조회로 실제 등록 여부를 확인하세요.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/kakao/channels/token": {
+      "post": {
+        "operationId": "requestKakaoChannelToken",
+        "summary": "카카오 채널 인증번호 요청",
+        "description": "채널 권한을 증명하기 위한 인증번호를 **담당자 휴대전화로 발송**해 달라고 요청합니다.\n채널 연결의 첫 단계입니다.\n\n**응답에 인증번호는 없습니다.** 인증번호는 카카오 비즈니스 채널에 등록된 담당자 휴대전화로만 전달되고,\nClawOps 는 그 값을 받지도 저장하지도 않습니다. 그래서 성공 응답은 `200` 이 아니라 `202` 입니다 —\n\"요청을 접수했고 결과는 다른 경로로 간다\"는 뜻입니다.\n\n받은 인증번호는 채널 연결(`POST /v1/accounts/{accountId}/kakao/channels`)에 `token` 으로 보냅니다.\n인증번호에는 유효 시간이 있으므로 받은 뒤 바로 진행하세요.\n\n재요청이 너무 잦으면 `429` 입니다. 응답의 `retryAfterSeconds` 만큼 기다린 뒤 다시 요청하세요.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "searchId",
+                  "phoneNumber"
+                ],
+                "properties": {
+                  "searchId": {
+                    "type": "string",
+                    "description": "카카오 채널 검색용 ID. `@` 를 붙여 보내도 떼어내고 처리합니다.",
+                    "example": "example"
+                  },
+                  "phoneNumber": {
+                    "type": "string",
+                    "description": "인증번호를 받을 담당자 휴대전화번호. 하이픈·+82 형태 모두 허용됩니다. **카카오 비즈니스 채널에 관리자로 등록된 번호여야** 인증번호가 발송됩니다.",
+                    "example": "010-1234-5678"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "인증번호 발송 요청 접수 — 실제 인증번호는 담당자 휴대전화로 전달됩니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requested": {
+                      "type": "boolean",
+                      "example": true,
+                      "description": "요청이 접수되었는지 여부"
+                    },
+                    "searchId": {
+                      "type": "string",
+                      "example": "example",
+                      "description": "정규화된 검색용 ID. 다음 단계에 이 값을 그대로 보내세요."
+                    },
+                    "phoneNumberMasked": {
+                      "type": "string",
+                      "example": "010-****-5678",
+                      "description": "인증번호가 발송된 번호(마스킹). 어느 번호로 갔는지 확인용입니다."
+                    },
+                    "retryAfterSeconds": {
+                      "type": "integer",
+                      "example": 60,
+                      "description": "재요청까지 기다릴 시간(초)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION) — 검색용 ID 또는 전화번호 형식 오류, 채널에 등록되지 않은 담당자 번호",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "인증번호 재요청 제한 (KAKAO_RATE_LIMITED) — `retryAfterSeconds` 만큼 기다린 뒤 재시도",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "카카오 채널 서비스 일시 장애 (KAKAO_PROVIDER_UNAVAILABLE)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/kakao/channels/{channelId}": {
+      "get": {
+        "operationId": "getKakaoChannel",
+        "summary": "카카오 채널 상세 조회",
+        "description": "연결된 채널 하나를 조회합니다. **목록과 달리 카카오 쪽 상태를 실제로 확인하고 `status` 를 갱신합니다.**\n\n채널 연결 요청이 타임아웃됐을 때 결과를 확정하는 경로이기도 합니다 — 연결 요청을 재호출하면 중복 등록을\n시도하게 되지만, 이 조회는 몇 번을 불러도 안전합니다.\n\n카카오 쪽 조회에 실패해도 `404` 가 아닙니다. 연결 기록 자체는 유효하므로 `status` 를 `needs_attention`\n으로 표시해 돌려줍니다 — 채널이 실제로 끊겼는지, 일시적인 조회 실패인지는 다시 호출해 확인하세요.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "카카오 채널 식별자(`channelId`). 검색용 ID(`example`)가 아닙니다.",
+            "example": "KA01PF250101000000000abcdefg"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "채널 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이 계정에 연결된 채널이 아님",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteKakaoChannel",
+        "summary": "카카오 채널 연결 해제",
+        "description": "채널 연동을 해제합니다. **카카오톡 채널 자체는 지워지지 않고**, ClawOps(SOLAPI)와의 연동만 끊깁니다.\n\n⚠️ **되돌릴 수 없고, 그 채널에 등록된 알림톡 템플릿도 함께 삭제됩니다.** 템플릿은 카카오 검수를\n다시 받아야 하므로 복구에 시간이 걸립니다 — 호출 전에 사용자에게 이 사실을 알리고 확인을 받으세요.\n\n해제 후에는 그 채널을 **다시 연결할 수 있습니다**(본인이든 다른 계정이든). 인증번호 요청부터\n다시 시작하면 됩니다.\n\n이미 해제된 채널이나 이 계정 소유가 아닌 채널은 `404` 입니다. 다른 계정의 채널은 해제할 수 없습니다.\n\n**되돌릴 수 없는 동작이므로 사용자 확인을 거친 뒤 호출하세요.** 이 API 는 확인 절차를 대신해 주지\n않습니다 — 대시보드에서 해제할 때는 삭제되는 내용을 안내하고 확인을 받습니다.\n\n해제 요청은 감사 기록에 남습니다. API 키로 호출하면 키에는 사용자 정보가 없어 \"누가\" 는 남지\n않고 \"API 키로 해제됨\" 으로만 기록됩니다 — 담당자 단위 추적이 필요하면 대시보드에서 해제하세요.",
+        "tags": [
+          "KakaoChannels"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "channelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "카카오 채널 식별자(`channelId`). 검색용 ID(`example`)가 아닙니다.",
+            "example": "KA01PF250101000000000abcdefg"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "해제된 채널 정보",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KakaoChannel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이 계정에 연결된 채널이 아니거나 이미 해제됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "공급자 호출량 제한 (KAKAO_RATE_LIMITED) — 해제되지 않았습니다. 잠시 후 재시도하세요.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "카카오 채널 서비스 일시 장애 (KAKAO_PROVIDER_UNAVAILABLE) — 해제되지 않았습니다",
             "content": {
               "application/json": {
                 "schema": {
@@ -12204,7 +13146,7 @@
           "transferTo": {
             "type": "string",
             "nullable": true,
-            "description": "전환 대상 번호. **읽기 전용** — 값을 지정하는 요청 필드는 없고 실제로 일어난 전환의\n결과가 기록됩니다. 전환이 없었으면 null.\n\n에이전트 전환과 SIP REFER 전환에서만 채워집니다(VoiceML `<Dial>` 은 제외 — 그 결과는\n`DialCallStatus` 로 받습니다).\n\n**전체 설명은 [통화 전환 결과](/call-transfers) 가 정본입니다.**\n",
+            "description": "전환 대상 번호. **읽기 전용** — 값을 지정하는 요청 필드는 없고 실제로 일어난 전환의\n결과가 기록됩니다. 전환이 없었으면 null.\n\n에이전트 전환과 SIP REFER 전환에서만 채워집니다(VoiceML `<Dial>` 은 제외 — 그 결과는\n`DialCallStatus` 로 받습니다).\n\n**전체 설명은 [통화 전환 결과](/docs/call-transfers) 가 정본입니다.**\n",
             "example": "01012345678"
           },
           "transferStatus": {
@@ -12318,8 +13260,8 @@
                 "endedAt": {
                   "type": "string",
                   "format": "date-time",
-                  "nullable": true,
-                  "description": "이 leg 가 끝난 시각"
+                  "description": "이 leg 가 끝난 시각",
+                  "nullable": true
                 }
               }
             }
@@ -12563,8 +13505,9 @@
               "lms",
               "mms",
               "rcs",
-              "kakao"
-            ]
+              "ata"
+            ],
+            "description": "`ata` 는 카카오 알림톡입니다. 본문(`body`)은 템플릿에 변수를 치환한 결과이며,\n버튼·아이템 리스트·강조 문구는 템플릿에 검수된 대로 발송되어 이 값에는 담기지 않습니다."
           },
           "subject": {
             "type": "string",
@@ -12639,6 +13582,232 @@
               },
               "total": {
                 "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "UsageMeter": {
+        "type": "string",
+        "description": "사용량 미터. 새 미터가 늘어도 응답 스키마는 바뀌지 않는다(행이 하나 늘 뿐).\n\n⚠️ 통화·전사·요약은 **초**로 돌려준다. 분 환산(올림)은 청구 정책이고 **계정 합계에만**\n적용되므로 `totals[].billableMinutes` 에만 담긴다 — 축을 쪼갠 값을 각각 올림해 더하면\n합계가 청구서보다 커진다.",
+        "enum": [
+          "outbound_seconds",
+          "inbound_seconds",
+          "transfer_seconds",
+          "sms",
+          "lms",
+          "mms",
+          "ata",
+          "transcription_seconds",
+          "summary_seconds",
+          "amd_invocations"
+        ],
+        "example": "outbound_seconds"
+      },
+      "UsageResponse": {
+        "type": "object",
+        "required": [
+          "period",
+          "records",
+          "meta",
+          "totals"
+        ],
+        "properties": {
+          "meta": {
+            "type": "object",
+            "description": "페이징 상태. 다른 목록 API 의 `meta` 와 같은 모양이다.\n\n`total` 은 **`records` 를 쪼갠 전체 행 수**이며, 축을 지정할수록 커진다. `totals`(사용량\n합계)와는 다른 것이다.",
+            "required": [
+              "page",
+              "pageSize",
+              "total"
+            ],
+            "properties": {
+              "page": {
+                "type": "integer",
+                "example": 1
+              },
+              "pageSize": {
+                "type": "integer",
+                "example": 200
+              },
+              "total": {
+                "type": "integer",
+                "description": "페이징 전 `records` 전체 개수. 마지막 페이지 판단에 쓴다.",
+                "example": 39
+              }
+            }
+          },
+          "period": {
+            "type": "object",
+            "description": "집계 구간. `from`/`to` 를 주지 않으면 **현재 청구 주기**가 들어간다.\n\n⚠️ 경계는 전부 **UTC** 다. 청구 주기 시작은 일 경계가 아니라 가입 순간의 시각이 그대로\n쓰인다(실측: 03:56:49, 11:21:39). 달력 월로 직접 합산하면 우리 청구서와 어긋나므로\n정산에는 이 응답의 `from`/`to` 를 그대로 쓸 것.",
+            "required": [
+              "from",
+              "to",
+              "timezone",
+              "confirmedThrough",
+              "includesToday"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-08-03T03:56:49.081Z"
+              },
+              "to": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-09-03T03:56:49.081Z"
+              },
+              "timezone": {
+                "type": "string",
+                "enum": [
+                  "UTC"
+                ],
+                "description": "모든 경계와 `day` 값의 기준 시간대. 현재 UTC 고정이다."
+              },
+              "confirmedThrough": {
+                "type": "string",
+                "format": "date",
+                "description": "사후 정정(지연 종료 처리·운영 보정)이 반영된 확정 구간의 마지막 날(UTC).\n이후 구간은 나중에 다시 조회하면 값이 바뀔 수 있다.",
+                "example": "2026-08-20"
+              },
+              "includesToday": {
+                "type": "boolean",
+                "description": "진행 중인 오늘(UTC) 구간이 포함되었는지. `includeToday=true` 일 때만 참."
+              }
+            }
+          },
+          "records": {
+            "type": "array",
+            "description": "`groupBy` 축으로 쪼갠 사용량. **수량만 담는다.**\n\n- 통화·전사·요약은 **초**다. 분 올림은 여기서 하지 않는다(축마다 올림하면 합계가 커진다).\n- 금액도 담지 않는다 — 단가가 누진 구간이라 축별로 나눌 수 없다.",
+            "items": {
+              "type": "object",
+              "required": [
+                "meter",
+                "unit",
+                "quantity"
+              ],
+              "properties": {
+                "meter": {
+                  "$ref": "#/components/schemas/UsageMeter"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "second",
+                    "count"
+                  ]
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "초 또는 건수. 올림하지 않은 원값이다.",
+                  "example": 24680
+                },
+                "day": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "`groupBy` 에 `day` 가 포함될 때만. UTC 기준."
+                },
+                "linkId": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "'`groupBy` 에 `linkId` 가 포함될 때만. 관리번호 발급 링크 ID —\n`assignment.completed` webhook 의 `LinkId` 와 같은 값이라 파트너가 자기 사용자와\n바로 조인할 수 있다. 관리번호로 발급되지 않은 번호(직접 발급)는 `null` 로 묶인다.\n\n⛔ 이 값은 **발급 링크 주소에 포함되는 값과 동일**하다. 정산서·CSV 등 외부로\n나가는 문서에 그대로 싣지 말 것 — 자사 고객 ID 로 치환해 쓴다.'",
+                  "example": "AL7f2c9a1b"
+                },
+                "phoneNumber": {
+                  "type": "string",
+                  "description": "'`groupBy` 에 `number` 가 포함될 때만. 저장된 형태 그대로(E.164 아님).\n⚠️ 번호는 반납 후 재배정된다 — 이 API 는 배정 구간으로 잘라 집계하지만,\n수신측에서 번호를 키로 누적하면 그 구분이 사라진다. 정산 키는 `linkId` 다.'",
+                  "example": "07052753941"
+                }
+              }
+            }
+          },
+          "totals": {
+            "type": "array",
+            "description": "축과 무관한 계정 전체 합계. `records` 를 미터별로 합한 값과 일치한다.",
+            "items": {
+              "type": "object",
+              "required": [
+                "meter",
+                "unit",
+                "quantity"
+              ],
+              "properties": {
+                "meter": {
+                  "$ref": "#/components/schemas/UsageMeter"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "second",
+                    "count"
+                  ]
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "billableMinutes": {
+                  "type": "integer",
+                  "nullable": true,
+                  "description": "청구와 **같은 규칙**으로 올림한 분. 계정 합계에만 정의된다.\n\n- `outbound_seconds` → `ceil((발신 + 전환) / 60)`.\n  **전환 초가 여기 합산되므로** `transfer_seconds` 행은 항상 `null` 이다.\n  ⭐ `meter=outbound_seconds` 만 요청해도 전환은 이 계산에 포함된다(요청하지\n  않았다면 응답에는 나오지 않는다) — 필터에 따라 청구 분이 달라지지 않게 한다.\n- `inbound_seconds` → `ceil(수신 / 60)`\n- `transcription_seconds` · `summary_seconds` → 각각 `ceil(초 / 60)`\n- 건수 미터(`sms`·`lms`·`mms`·`amd_invocations`)는 `null`.",
+                  "example": 442
+                },
+                "unitPriceHint": {
+                  "type": "integer",
+                  "nullable": true,
+                  "description": "⚠️ **현재는 항상 `null` 이다**(금액 계산은 청구 경로 재사용이 필요해 후속 작업).\n채워지면 아래 의미를 갖는다.\n\n조회 시점에 이 미터가 놓인 **누진 구간의 단가(KRW, 부가세 포함)**. 참고값이다 —\n사용량이 늘어 다음 구간으로 넘어가면 달라지고, 플랜 포함량 안에 있으면 `null` 이다.\n이 값을 수량에 곱한 것은 청구액이 아니다.",
+                  "example": 60
+                }
+              }
+            }
+          },
+          "amount": {
+            "type": "object",
+            "nullable": true,
+            "description": "이번 구간의 종량 예상액.\n\n⚠️ **현재는 어떤 조회에서도 항상 `null` 이다** — 금액 계산은 플랜 포함량·누진 구간·\n애드온을 함께 봐야 해서 청구 경로를 재사용하는 후속 작업으로 남았다. 아래는 채워졌을\n때의 계약이다.\n\n**다음 두 경우에는 그때에도 `null` 이다.**\n\n- `groupBy` 에 `linkId`·`number`·`day` 중 하나라도 지정한 조회 — 축별 금액은 제공하지 않는다.\n- `from`/`to` 로 청구 주기가 아닌 임의 구간을 조회한 경우.\n\n⚠️ 확정 청구액이 아니다. 정기 결제 시점의 플랜료·애드온·일할 계산은 포함되지 않는다.",
+            "required": [
+              "currency",
+              "vatIncluded",
+              "meteredTotal"
+            ],
+            "properties": {
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "KRW"
+                ]
+              },
+              "vatIncluded": {
+                "type": "boolean",
+                "description": "항상 `true`. 표시가는 부가세 포함이 원칙이다."
+              },
+              "meteredTotal": {
+                "type": "integer",
+                "description": "플랜 포함량을 넘은 종량분의 합계.",
+                "example": 24700
+              },
+              "breakdown": {
+                "type": "array",
+                "description": "미터별 종량 금액. 축이 아니라 미터로만 나눈 것이라 누진 단가와 어긋나지 않는다.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "meter",
+                    "quantity",
+                    "amount"
+                  ],
+                  "properties": {
+                    "meter": {
+                      "$ref": "#/components/schemas/UsageMeter"
+                    },
+                    "quantity": {
+                      "type": "number"
+                    },
+                    "amount": {
+                      "type": "integer"
+                    }
+                  }
+                }
               }
             }
           }
@@ -12839,6 +14008,11 @@
           "note": {
             "type": "string",
             "nullable": true
+          },
+          "returnUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "발급 완료 후 최종이용자를 되돌려 보낼 주소. 미설정이면 null."
           },
           "webhookHeaders": {
             "type": "object",
@@ -13436,6 +14610,137 @@
           "messageError": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "KakaoChannelCategoryListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "선택 가능한 채널 업종 카테고리. **열린 집합입니다** — 값은 카카오/공급자 쪽에서 늘거나 바뀌므로 코드에 하드코딩하지 말고 이 응답을 그대로 선택지로 쓰세요.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "example": "00100010001",
+                  "description": "채널 연결 시 `categoryCode` 로 그대로 보내는 값"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "고객센터",
+                  "description": "사람이 읽는 카테고리 이름"
+                }
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "fetchedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "이 목록을 공급자에서 실제로 받아 온 시각"
+              },
+              "cached": {
+                "type": "boolean",
+                "description": "서버 캐시에서 응답했는지 여부. 캐시는 짧고, 값이 바뀌면 자동으로 따라갑니다."
+              }
+            }
+          }
+        }
+      },
+      "KakaoChannel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "clx9kak0001",
+            "description": "ClawOps 내부 채널 연결 id"
+          },
+          "channelId": {
+            "type": "string",
+            "example": "KA01PF250101000000000abcdefg",
+            "description": "카카오 채널 식별자. **연동에서 이 값이 기준입니다** — 상세 조회 경로와 이후 알림톡 발송이 모두 이 값을 씁니다. 레거시 문서나 일부 발송 API 의 `pfId` 와 같은 대상을 가리킵니다."
+          },
+          "searchId": {
+            "type": "string",
+            "example": "example",
+            "description": "카카오 채널 검색용 ID. **`@` 없는 형태**로 저장·응답됩니다(`@` 를 붙여 보내도 떼어냅니다). **채널 소유자가 카카오 비즈니스에서 바꿀 수 있는 값이므로 연동 키로 쓰지 마세요** — 키는 `channelId` 입니다."
+          },
+          "name": {
+            "type": "string",
+            "example": "러너스 고객센터",
+            "description": "카카오 채널 이름"
+          },
+          "categoryCode": {
+            "type": "string",
+            "example": "00100010001",
+            "description": "채널 업종 카테고리 코드. 값 목록은 채널 카테고리 조회로 받습니다."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "needs_attention"
+            ],
+            "example": "connected",
+            "description": "`connected` = 연결 완료. `needs_attention` = 연결 기록은 있으나 카카오 채널 상태를 확인하지 못한 상태입니다 (채널이 실제로 끊겼을 수도, 일시적인 조회 실패일 수도 있습니다). 상세 조회를 다시 호출하면 재확인합니다."
+          },
+          "managerPhoneMasked": {
+            "type": "string",
+            "nullable": true,
+            "example": "010-****-5678",
+            "description": "채널 담당자 휴대전화번호(마스킹). 원문은 저장하지 않으므로 응답에도 마스킹된 값만 나갑니다."
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "채널이 이 계정에 연결된 시각"
+          },
+          "syncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "카카오 채널 상태를 마지막으로 확인한 시각. null 이면 연결 이후 한 번도 확인하지 않은 상태입니다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "KakaoChannelListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "이 계정에 연결된 카카오 채널 목록. 최근 연결순.",
+            "items": {
+              "$ref": "#/components/schemas/KakaoChannel"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "description": "현재 페이지(0-based)"
+              },
+              "pageSize": {
+                "type": "integer",
+                "description": "페이지 크기"
+              },
+              "total": {
+                "type": "integer",
+                "description": "필터에 해당하는 전체 건수"
+              }
+            }
           }
         }
       },
