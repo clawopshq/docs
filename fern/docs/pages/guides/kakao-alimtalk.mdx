@@ -10,14 +10,20 @@ slug: kakao-alimtalk
 
 ### 1. 채널 조회
 
-```bash
+```text
+GET /v1/accounts/{accountId}/kakao/channels
+```
+
+<CodeBlocks>
+```bash title="cURL"
 curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
+</CodeBlocks>
 
 응답의 `data[].id`가 채널 리소스 ID입니다.
 
-```json title="응답"
+```json title="응답 (200)"
 {
   "data": [
     {
@@ -35,14 +41,20 @@ curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels" \
 
 채널 리소스 ID를 `channelId`에 전달합니다.
 
-```bash
+```text
+GET /v1/accounts/{accountId}/kakao/templates
+```
+
+<CodeBlocks>
+```bash title="cURL"
 curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/templates?channelId=clx9kak0001" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
+</CodeBlocks>
 
 템플릿 자체의 식별자는 `id`입니다. 응답의 `channelId`는 이 템플릿이 속한 채널 리소스 ID입니다. `sendable`이 `true`인 템플릿을 고르고 `variables`에 나온 변수를 모두 채우세요.
 
-```json title="응답"
+```json title="응답 (200)"
 {
   "data": [
     {
@@ -62,7 +74,12 @@ curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/templates?chann
 
 채널 응답의 `id`를 `Kakao.ChannelId`에, 템플릿 응답의 `id`를 `Kakao.TemplateId`에 전달합니다.
 
-```bash
+```text
+POST /v1/accounts/{accountId}/messages
+```
+
+<CodeBlocks>
+```bash title="cURL"
 curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/messages" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
@@ -77,6 +94,7 @@ curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/messages" \
     "Fallback": { "Body": "주문이 접수되었습니다." }
   }'
 ```
+</CodeBlocks>
 
 <Info>
   알림톡에는 `Body`를 넣지 않습니다. 본문과 버튼은 검수된 템플릿이 정하고 발송 시점에는 `Variables`만 채울 수 있습니다.

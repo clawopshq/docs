@@ -56,9 +56,13 @@ navigation:
           - page: 문자 메시지
             path: docs/pages/guides/messages.mdx
             icon: comment-sms
-          - page: 카카오 알림톡
-            path: docs/pages/guides/kakao-alimtalk.mdx
+          - section: 카카오 메시지
             icon: comment
+            contents:
+              - page: 카카오 비즈니스 시작하기
+                path: docs/pages/guides/kakao-business-start.mdx
+              - page: 알림톡 보내기
+                path: docs/pages/guides/kakao-alimtalk.mdx
           - page: 통화 전환 결과
             path: docs/pages/guides/call-transfers.mdx
             icon: right-left

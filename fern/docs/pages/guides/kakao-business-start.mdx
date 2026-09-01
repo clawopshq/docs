@@ -1,0 +1,189 @@
+---
+title: 카카오 비즈니스 시작하기
+description: 알림톡 발송 전에 필요한 카카오 비즈니스 가입, 채널 개설, 비즈니스 심사와 ClawOps 연결 절차를 안내합니다.
+slug: kakao-business-start
+---
+
+## 비즈니스 채널 만들기
+
+### 비즈니스 로그인
+
+카카오 계정으로 [로그인](https://business.kakao.com/dashboard) 후 약관 동의 및 인증을 진행하면 카카오 비즈니스 통합 가입이 완료됩니다.
+
+### 카카오톡 채널 개설 / 가입
+
+회원가입한 정보로 비즈니스 로그인 후 새로운 채널을 생성하거나 채널에 초대받은 경우 가입해주세요.
+
+![카카오톡 채널 유형 선택 화면](/assets/kakao-business/channel-create.jpg)
+
+### 비즈니스 채널 심사
+
+채널 생성 후 **관리페이지 > 채널 > 비즈니스 심사** 페이지에서 비즈니스 인증을 진행해야 알림톡/브랜드 메시지 발송이 가능합니다.  
+인증 완료까지 며칠의 시간이 소요될 수 있습니다.
+
+**필수 제출 서류**
+
+- [필수] 사업자등록증 또는 고유번호증
+- [필수] 대표자의 신분증 (본인인 경우 실명 인증으로 대체)
+- (해당 시) 업종별 인허가 서류
+
+![비즈니스 채널 심사 완료 화면](/assets/kakao-business/business-review.jpg)
+
+### 채널 검색 허용
+
+관리자센터 → 채널 → 채널 정보 → 옵션 설정에서 채널 공개 및 검색 허용이 **ON** 상태인지 확인합니다.
+
+![채널 공개 및 검색 허용 설정](/assets/kakao-business/search-settings.jpg)
+
+### 고객센터 정보 입력
+
+고객센터 연락처가 올바르게 입력되어 있는지 확인합니다.
+
+**Web사이트 활용방법**
+
+1. 채널관리자센터 > 프로필에서 프로필 설정을 통해 입력합니다. 고객센터 연락처 → 설정하기 버튼을 클릭하여 입력 후 저장합니다.
+2. 채널관리자센터 > 메시지 보내기 메뉴를 통해 설정합니다.
+3. 메시지 보내기 > 기본텍스트형 선택 > 고객센터 연락처 입력창에서 정보를 입력 후 저장합니다.
+
+**APP 활용방법**
+
+채널관리자센터 애플리케이션을 통해 설정합니다.
+
+1. 관리 > 고객센터 연락처에서 정보를 입력 후 저장합니다.
+2. 채널홈 > 채널관리 > 채널 정보 설정 > 기본정보 > 고객센터 연락처에서 입력합니다.
+
+![카카오톡 채널 정보 설정](/assets/kakao-business/channel-info.jpg)
+
+## ClawOps에 연동하기
+
+비즈니스 채널 심사가 완료되면 콘솔 또는 API로 ClawOps와 연동할 수 있습니다.
+
+### 콘솔에서 연결하기
+
+[ClawOps 콘솔의 카카오 채널](https://platform.claw-ops.com/kakao-channels)로 이동한 뒤 **채널 연결**을 선택하고 아래 정보를 입력합니다.
+
+| 항목 | 입력 내용 |
+| --- | --- |
+| 검색용 아이디 | 카카오 관리자센터에 등록한 검색용 아이디 입력 |
+| 채널 카테고리 | 카카오와 동일한 카테고리 선택 (동일 카테고리가 없는 경우 가장 유사한 분류로 설정) |
+| 담당자 휴대폰 번호 | 채널 관리자(담당자) 휴대폰 번호 입력 |
+
+<Warning>
+  카카오 비즈니스센터의 관리자 추가인증 설정이 비활성화된 경우 등록이 제한될 수 있습니다. 연동 전 설정 상태를 반드시 확인하시기 바랍니다.
+</Warning>
+
+담당자 휴대폰으로 받은 인증번호를 입력하면 연결이 완료됩니다.
+
+![ClawOps 카카오 채널 등록 화면](/assets/kakao-business/clawops-connect.jpg)
+
+### API로 연결하기
+
+API에서는 채널 카테고리를 조회한 뒤 담당자 휴대전화로 인증번호를 요청하고, 받은 인증번호로 연결을 완료합니다. 모든 요청에 ClawOps API 키를 Bearer 토큰으로 전달합니다.
+
+#### 1. 채널 카테고리 조회
+
+```text
+GET /v1/accounts/{accountId}/kakao/channel-categories
+```
+
+카테고리 값은 변경될 수 있으므로 코드에 하드코딩하지 말고, 조회 응답의 `code`를 연결 요청의 `categoryCode`로 사용하세요.
+
+<CodeBlocks>
+```bash title="cURL"
+curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channel-categories" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+</CodeBlocks>
+
+```json title="응답 (200)"
+{
+  "data": [
+    {
+      "code": "00100010001",
+      "name": "고객센터"
+    }
+  ],
+  "meta": {
+    "fetchedAt": "2026-09-01T01:30:00.000Z",
+    "cached": true
+  }
+}
+```
+
+#### 2. 인증번호 요청
+
+```text
+POST /v1/accounts/{accountId}/kakao/channels/token
+```
+
+`searchId`에는 카카오 관리자센터에 등록한 채널 검색용 아이디를, `phoneNumber`에는 채널 관리자로 등록된 담당자 휴대전화번호를 입력합니다.
+
+<CodeBlocks>
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels/token" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searchId": "example",
+    "phoneNumber": "010-1234-5678"
+  }'
+```
+</CodeBlocks>
+
+```json title="응답 (202)"
+{
+  "requested": true,
+  "searchId": "example",
+  "phoneNumberMasked": "010-****-5678",
+  "retryAfterSeconds": 60
+}
+```
+
+<Info>
+  응답에는 인증번호가 포함되지 않습니다. 인증번호는 카카오 비즈니스 채널에 등록된 담당자 휴대전화로 전달됩니다.
+</Info>
+
+#### 3. 인증번호로 연결 완료
+
+```text
+POST /v1/accounts/{accountId}/kakao/channels
+```
+
+앞 단계와 동일한 `searchId`, `phoneNumber`를 보내고, 조회한 `categoryCode`와 휴대전화로 받은 인증번호를 `token`에 입력합니다.
+
+<CodeBlocks>
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searchId": "example",
+    "phoneNumber": "010-1234-5678",
+    "categoryCode": "00100010001",
+    "token": "394812"
+  }'
+```
+</CodeBlocks>
+
+```json title="응답 (201)"
+{
+  "id": "clx9kak0001",
+  "searchId": "example",
+  "name": "러너스 고객센터",
+  "categoryCode": "00100010001",
+  "status": "connected",
+  "managerPhoneMasked": "010-****-5678",
+  "connectedAt": "2026-09-01T01:35:00.000Z",
+  "syncedAt": "2026-09-01T01:35:00.000Z",
+  "createdAt": "2026-09-01T01:35:00.000Z",
+  "updatedAt": "2026-09-01T01:35:00.000Z"
+}
+```
+
+새로 연결되면 `201`, 이미 같은 계정에 연결된 채널이면 기존 채널과 함께 `200`이 반환됩니다. 연결 요청이 타임아웃되면 바로 재요청하지 말고 채널 목록 조회로 연결 여부를 먼저 확인하세요.
+
+<Info>
+  연결 응답의 `id`는 ClawOps 채널 리소스 ID입니다. 이후 템플릿 조회와 알림톡 발송에 이 값을 사용합니다. API와 콘솔에서 외부 서비스 식별자를 직접 입력할 필요가 없습니다.
+</Info>
+
+채널 연결을 마쳤다면 [알림톡 보내기](/kakao-alimtalk)에서 템플릿 조회와 발송 방법을 확인하세요.
