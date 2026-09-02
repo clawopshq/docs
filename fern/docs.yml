@@ -77,6 +77,8 @@ navigation:
             contents:
               - page: 카카오 비즈니스 시작하기
                 path: docs/pages/guides/kakao-business-start.mdx
+              - page: 알림톡 템플릿 만들기
+                path: docs/pages/guides/kakao-template-create.mdx
               - page: 알림톡 보내기
                 path: docs/pages/guides/kakao-alimtalk.mdx
           - page: 통화 전환 결과
