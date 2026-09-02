@@ -2539,7 +2539,7 @@
                   "StatusCallbackEvent": {
                     "type": "string",
                     "example": "initiated ringing answered completed transfer",
-                    "description": "수신할 상태 이벤트 목록(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
+                    "description": "수신할 상태 이벤트 목록(공백 구분). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Webhooks](/webhooks).\n"
                   },
                   "MachineDetection": {
                     "type": "string",
@@ -2911,7 +2911,7 @@
                 }
               ]
             },
-            "description": "종료 사유로 필터링. `status` 가 실패를 한 덩어리로 묶는 것과 달리 **왜** 끝났는지로 가릅니다 — 채널 초과(`concurrency_limit_exceeded`)·결번(`invalid_number`)· ClawOps 오류(`app_error`) 등. 전체 목록은 [통화 실패 사유](/docs/call-failure-causes). 단일 값 또는 배열.\n",
+            "description": "종료 사유로 필터링. `status` 가 실패를 한 덩어리로 묶는 것과 달리 **왜** 끝났는지로 가릅니다 — 채널 초과(`concurrency_limit_exceeded`)·결번(`invalid_number`)· ClawOps 오류(`app_error`) 등. 종료 사유 필터는 [Calls API](/api-reference/claw-ops-api/calls/list-calls)를 참고하세요. 단일 값 또는 배열.\n",
             "example": "concurrency_limit_exceeded"
           },
           {
@@ -4306,7 +4306,7 @@
                     "type": "string",
                     "nullable": true,
                     "example": "initiated ringing answered completed transfer",
-                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
+                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Webhooks](/webhooks).\n"
                   }
                 }
               }
@@ -4552,7 +4552,7 @@
                     "type": "string",
                     "nullable": true,
                     "example": "initiated ringing answered completed transfer",
-                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Status Callback](/docs/webhooks/status).\n"
+                    "description": "구독할 상태 이벤트(공백 구분, 선택). 미지정 시 `initiated ringing answered completed` 가 적용됩니다. `transfer`(호전환 진행 상황)는 기본에 포함되지 않으므로 받으려면 직접 나열하세요. 전체 목록은 [Webhooks](/webhooks).\n"
                   },
                   "dictionaryId": {
                     "type": "string",
@@ -5031,10 +5031,11 @@
               "enum": [
                 "sms",
                 "lms",
-                "mms"
+                "mms",
+                "ata"
               ]
             },
-            "description": "메시지 유형 필터",
+            "description": "메시지 유형 필터. `ata` 는 카카오 알림톡입니다.",
             "example": "sms"
           },
           {
@@ -8582,7 +8583,8 @@
               "default": 0,
               "minimum": 0
             },
-            "description": "페이지 번호(0-based)"
+            "description": "페이지 번호(0-based)",
+            "example": 0
           },
           {
             "name": "pageSize",
@@ -8592,7 +8594,9 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
-            }
+            },
+            "description": "페이지당 항목 수",
+            "example": 20
           },
           {
             "name": "page_size",
@@ -8603,7 +8607,8 @@
               "minimum": 1,
               "maximum": 100
             },
-            "description": "`pageSize` 별칭."
+            "description": "`pageSize` 별칭.",
+            "example": 50
           },
           {
             "name": "limit",
@@ -8614,7 +8619,8 @@
               "minimum": 1,
               "maximum": 100
             },
-            "description": "`pageSize` 별칭."
+            "description": "`pageSize` 별칭.",
+            "example": 100
           }
         ],
         "responses": {
@@ -13244,7 +13250,7 @@
           "hangupCause": {
             "type": "string",
             "nullable": true,
-            "description": "통화 종료 사유. `status` 가 왜 그렇게 끝났는지를 구분합니다. 종료 전이거나 사유\n미상이면 null.\n\n네 갈래로 나뉩니다 — 번호 자체가 문제라 재시도해도 소용없는 것(`invalid_number` 등),\n일시적이라 재시도 가치가 있는 것(`no_answer`·`user_busy` 등), 번호가 아니라 **계정**\n문제인 것(`concurrency_limit_exceeded`·`subscription_inactive` 등), ClawOps 측 오류\n(`app_error`·`call_stuck`).\n\n**전체 목록과 재시도 판단 기준은 [통화 실패 사유](/docs/call-failure-causes) 가 정본입니다.**\n여기 값을 나열하지 않는 이유: 사유가 늘 때마다 spec·문서·대시보드가 각각 갱신돼야 하는데\n한 곳만 빠지면 조용히 어긋난다(실제로 그렇게 어긋난 적이 있다).\n",
+            "description": "통화 종료 사유. `status` 가 왜 그렇게 끝났는지를 구분합니다. 종료 전이거나 사유\n미상이면 null.\n\n네 갈래로 나뉩니다 — 번호 자체가 문제라 재시도해도 소용없는 것(`invalid_number` 등),\n일시적이라 재시도 가치가 있는 것(`no_answer`·`user_busy` 등), 번호가 아니라 **계정**\n문제인 것(`concurrency_limit_exceeded`·`subscription_inactive` 등), ClawOps 측 오류\n(`app_error`·`call_stuck`).\n\n**종료 사유로 통화를 필터링하려면 [Calls API](/api-reference/claw-ops-api/calls/list-calls)를 참고하세요.**\n여기 값을 나열하지 않는 이유: 사유가 늘 때마다 spec·문서·대시보드가 각각 갱신돼야 하는데\n한 곳만 빠지면 조용히 어긋난다(실제로 그렇게 어긋난 적이 있다).\n",
             "example": "invalid_number"
           },
           "hangupCauseQ850": {
@@ -13276,7 +13282,7 @@
           "transferTo": {
             "type": "string",
             "nullable": true,
-            "description": "전환 대상 번호. **읽기 전용** — 값을 지정하는 요청 필드는 없고 실제로 일어난 전환의\n결과가 기록됩니다. 전환이 없었으면 null.\n\n에이전트 전환과 SIP REFER 전환에서만 채워집니다(VoiceML `<Dial>` 은 제외 — 그 결과는\n`DialCallStatus` 로 받습니다).\n\n**전체 설명은 [통화 전환 결과](/docs/call-transfers) 가 정본입니다.**\n",
+            "description": "전환 대상 번호. **읽기 전용** — 값을 지정하는 요청 필드는 없고 실제로 일어난 전환의\n결과가 기록됩니다. 전환이 없었으면 null.\n\n에이전트 전환과 SIP REFER 전환에서만 채워집니다(VoiceML `<Dial>` 은 제외 — 그 결과는\n`DialCallStatus` 로 받습니다).\n\n**전체 설명은 [통화 전환 결과](/call-transfers) 가 정본입니다.**\n",
             "example": "01012345678"
           },
           "transferStatus": {
@@ -13634,7 +13640,6 @@
               "sms",
               "lms",
               "mms",
-              "rcs",
               "ata"
             ],
             "description": "`ata` 는 카카오 알림톡입니다. 본문(`body`)은 템플릿에 변수를 치환한 결과이며,\n버튼·아이템 리스트·강조 문구는 템플릿에 검수된 대로 발송되어 이 값에는 담기지 않습니다."
