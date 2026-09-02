@@ -83,17 +83,17 @@ print(channel.id, channel.name)
 
 응답의 `data[].id`가 발송 요청에 넣을 ClawOps 채널 ID입니다. 카카오 검색용 ID인 `searchId`를 넣으면 안 됩니다.
 
-```json title="실제 조회 응답 (200, 발췌)"
+```json title="응답 예시 (200)"
 {
   "data": [
     {
-      "id": "cmth9t8kb004201s61a2kvbzl",
-      "searchId": "equation",
-      "name": "Equation",
+      "id": "YOUR_CHANNEL_ID",
+      "searchId": "your-channel-search-id",
+      "name": "내 카카오 채널",
       "status": "connected"
     }
   ],
-  "meta": { "page": 0, "pageSize": 20, "total": 2 }
+  "meta": { "page": 0, "pageSize": 20, "total": 1 }
 }
 ```
 
@@ -150,10 +150,10 @@ print(template.id, template.variables)
 
 실측에 사용한 템플릿은 다음과 같습니다.
 
-```json title="실제 조회 응답 (200, 발췌)"
+```json title="응답 예시 (200, 발췌)"
 {
-  "id": "cmthe6nsl000901s6gpelksi3",
-  "channelId": "cmth9t8kb004201s61a2kvbzl",
+  "id": "YOUR_TEMPLATE_ID",
+  "channelId": "YOUR_CHANNEL_ID",
   "name": "인증번호",
   "content": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: #{인증번호}",
   "status": "APPROVED",
@@ -234,13 +234,15 @@ print(message.message_id, message.status, message.type)
 | TypeScript SDK | `490002` | `201`, `queued`, `ata` | `sent` |
 | Python SDK | `490003` | `201`, `queued`, `ata` | `sent` |
 
-```json title="실제 발송 응답 (201)"
+아래 응답은 실측 결과에서 계정 종속 값만 예제 값으로 바꾼 것입니다.
+
+```json title="검증된 발송 응답 형태 (201)"
 {
-  "messageId": "MG8e59e19c6d88f2731ad85e88192407d7",
+  "messageId": "MG0123456789abcdef0123456789abcdef",
   "status": "queued",
   "type": "ata",
-  "to": "010****4897",
-  "from": "07052361008",
+  "to": "01012345678",
+  "from": "07012341234",
   "body": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: 490001",
   "direction": "outbound",
   "dateCreated": "2026-09-02T06:12:53.867Z",
@@ -285,13 +287,15 @@ print(message.status, message.date_updated)
 ```
 </CodeBlocks>
 
-```json title="실제 최종 조회 응답 (200, 발췌)"
+아래 응답도 실측 결과에서 계정 종속 값만 예제 값으로 바꾼 것입니다.
+
+```json title="검증된 최종 조회 응답 형태 (200, 발췌)"
 {
-  "messageId": "MG8e59e19c6d88f2731ad85e88192407d7",
+  "messageId": "MG0123456789abcdef0123456789abcdef",
   "status": "sent",
   "type": "ata",
-  "to": "010****4897",
-  "from": "07052361008",
+  "to": "01012345678",
+  "from": "07012341234",
   "body": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: 490001",
   "dateCreated": "2026-09-02T06:12:53.452Z",
   "dateUpdated": "2026-09-02T06:13:04.731Z"
