@@ -1,109 +1,343 @@
 ---
-title: 카카오 알림톡
-description: 채널과 템플릿을 조회하고 ClawOps 리소스 ID로 카카오 알림톡을 발송하는 방법을 안내합니다.
+title: 카카오 알림톡 보내기
+description: 승인된 템플릿을 조회하고 cURL, TypeScript SDK, Python SDK로 알림톡을 발송한 뒤 최종 전달 결과를 확인합니다.
 slug: kakao-alimtalk
 ---
 
-카카오 알림톡은 검수된 템플릿으로 안내 메시지를 발송합니다. API에서 채널과 템플릿을 조회한 뒤 응답의 ClawOps 리소스 ID를 발송 요청에 사용합니다.
+카카오 알림톡은 자유롭게 본문을 작성해 보내는 메시지가 아닙니다. 카카오가 승인한 템플릿을 선택하고, 발송할 때 템플릿 변수의 값만 채웁니다.
 
-## 알림톡 보내기
+이 가이드의 cURL, TypeScript SDK, Python SDK 예제는 동일한 승인 템플릿으로 각각 한 건씩 실제 발송해 검증했습니다. 세 요청 모두 `201 Created`로 접수됐고 최종 상태는 `sent`였습니다.
 
-### 1. 채널 조회
+<Info>
+  카카오 비즈니스 채널을 아직 연결하지 않았다면 [카카오 비즈니스 시작하기](/kakao-business-start)를 먼저 완료하세요. 사용할 템플릿이 없다면 [알림톡 템플릿 만들기](/kakao-template-create)를 따라 템플릿을 만들고 검수받아야 합니다.
+</Info>
 
-```text
-GET /v1/accounts/{accountId}/kakao/channels
+## 준비할 값
+
+| 값 | 확인하는 곳 | 예제 |
+| --- | --- | --- |
+| Account ID | 콘솔 **API & Webhooks** | `YOUR_ACCOUNT_ID` |
+| API Key | 콘솔 **API & Webhooks → 새 키 생성** | `YOUR_API_KEY` |
+| 발신번호 | 콘솔 **전화번호** | `07012341234` |
+| 수신번호 | 알림톡을 받을 휴대폰 번호 | `01012345678` |
+| 채널 ID | 채널 조회 응답의 `data[].id` | `cmth...` |
+| 템플릿 ID | 템플릿 조회 응답의 `data[].id` | `cmthe...` |
+
+발신번호는 현재 계정이 보유한 번호여야 합니다. API Key와 Account ID는 환경변수로 설정합니다.
+
+```bash
+export CLAWOPS_API_KEY="YOUR_API_KEY"
+export CLAWOPS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+export CLAWOPS_FROM="07012341234"
+export CLAWOPS_TO="01012345678"
+export CLAWOPS_KAKAO_CHANNEL_ID="YOUR_CHANNEL_ID"
+export CLAWOPS_KAKAO_TEMPLATE_ID="YOUR_TEMPLATE_ID"
 ```
 
+SDK를 사용한다면 실행할 언어의 패키지를 설치합니다.
+
 <CodeBlocks>
-```bash title="cURL"
-curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/channels" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+```bash title="TypeScript"
+npm install @teamlearners/clawops
+```
+
+```bash title="Python"
+pip install clawops
 ```
 </CodeBlocks>
 
-응답의 `data[].id`가 채널 리소스 ID입니다.
+## 1. 발송 가능한 채널 조회하기
 
-```json title="응답 (200)"
+연결 상태가 정상인 채널을 조회합니다. cURL과 두 SDK는 같은 API를 호출합니다.
+
+<CodeBlocks>
+```bash title="cURL"
+curl "https://api.claw-ops.com/v1/accounts/${CLAWOPS_ACCOUNT_ID}/kakao/channels?status=connected" \
+  -H "Authorization: Bearer ${CLAWOPS_API_KEY}"
+```
+
+```typescript title="TypeScript"
+import ClawOps from "@teamlearners/clawops";
+
+const client = new ClawOps(); // CLAWOPS_API_KEY, CLAWOPS_ACCOUNT_ID 사용
+const channels = await client.kakao.channels.list({ status: "connected" });
+const channel = channels.data[0];
+
+if (!channel) throw new Error("연결된 카카오 채널이 없습니다.");
+console.log(channel.id, channel.name);
+```
+
+```python title="Python"
+from clawops import ClawOps
+
+client = ClawOps()  # CLAWOPS_API_KEY, CLAWOPS_ACCOUNT_ID 사용
+channels = client.kakao.channels.list(status="connected")
+
+if not channels.data:
+    raise RuntimeError("연결된 카카오 채널이 없습니다.")
+
+channel = channels.data[0]
+print(channel.id, channel.name)
+```
+</CodeBlocks>
+
+응답의 `data[].id`가 발송 요청에 넣을 ClawOps 채널 ID입니다. 카카오 검색용 ID인 `searchId`를 넣으면 안 됩니다.
+
+```json title="실제 조회 응답 (200, 발췌)"
 {
   "data": [
     {
-      "id": "clx9kak0001",
-      "searchId": "example",
-      "name": "러너스 고객센터",
+      "id": "cmth9t8kb004201s61a2kvbzl",
+      "searchId": "equation",
+      "name": "Equation",
       "status": "connected"
     }
   ],
-  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+  "meta": { "page": 0, "pageSize": 20, "total": 2 }
 }
 ```
 
-### 2. 템플릿 조회
+## 2. 승인된 템플릿과 변수 확인하기
 
-채널 리소스 ID를 `channelId`에 전달합니다.
-
-```text
-GET /v1/accounts/{accountId}/kakao/templates
-```
+앞에서 얻은 채널 ID로 템플릿을 조회합니다. 반드시 `sendable: true`인 템플릿을 사용하고, `variables`에 나온 변수를 모두 채워야 합니다.
 
 <CodeBlocks>
 ```bash title="cURL"
-curl "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/kakao/templates?channelId=clx9kak0001" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl "https://api.claw-ops.com/v1/accounts/${CLAWOPS_ACCOUNT_ID}/kakao/templates?channelId=${CLAWOPS_KAKAO_CHANNEL_ID}&pageSize=100" \
+  -H "Authorization: Bearer ${CLAWOPS_API_KEY}"
+```
+
+```typescript title="TypeScript"
+import ClawOps from "@teamlearners/clawops";
+
+const client = new ClawOps();
+const templates = await client.kakao.templates.list({
+  channelId: process.env.CLAWOPS_KAKAO_CHANNEL_ID!,
+  pageSize: 100,
+});
+const template = templates.data.find(
+  (item) => item.name === "인증번호" && item.sendable,
+);
+
+if (!template) throw new Error("발송 가능한 인증번호 템플릿이 없습니다.");
+console.log(template.id, template.variables);
+```
+
+```python title="Python"
+import os
+
+from clawops import ClawOps
+
+client = ClawOps()
+templates = client.kakao.templates.list(
+    channel_id=os.environ["CLAWOPS_KAKAO_CHANNEL_ID"],
+    page_size=100,
+)
+template = next(
+    (
+        item
+        for item in templates.auto_paging_iter()
+        if item.name == "인증번호" and item.sendable
+    ),
+    None,
+)
+
+if template is None:
+    raise RuntimeError("발송 가능한 인증번호 템플릿이 없습니다.")
+print(template.id, template.variables)
 ```
 </CodeBlocks>
 
-템플릿 자체의 식별자는 `id`입니다. 응답의 `channelId`는 이 템플릿이 속한 채널 리소스 ID입니다. `sendable`이 `true`인 템플릿을 고르고 `variables`에 나온 변수를 모두 채우세요.
+실측에 사용한 템플릿은 다음과 같습니다.
 
-```json title="응답 (200)"
+```json title="실제 조회 응답 (200, 발췌)"
 {
-  "data": [
-    {
-      "id": "clx9tpl0001",
-      "channelId": "clx9kak0001",
-      "name": "주문 접수 안내",
-      "status": "approved",
-      "variables": ["고객명"],
-      "sendable": true
-    }
-  ],
-  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+  "id": "cmthe6nsl000901s6gpelksi3",
+  "channelId": "cmth9t8kb004201s61a2kvbzl",
+  "name": "인증번호",
+  "content": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: #{인증번호}",
+  "status": "APPROVED",
+  "sendable": true,
+  "variables": ["#{인증번호}"]
 }
 ```
 
-### 3. 발송
+조회 응답은 변수를 `#{인증번호}` 형태로 표시합니다. 발송 요청의 변수 키에는 `인증번호`와 `#{인증번호}`를 모두 사용할 수 있으며, 아래에서는 읽기 쉬운 `인증번호`를 사용합니다.
 
-채널 응답의 `id`를 `Kakao.ChannelId`에, 템플릿 응답의 `id`를 `Kakao.TemplateId`에 전달합니다.
+조회한 채널과 템플릿의 `id`를 앞에서 선언한 `CLAWOPS_KAKAO_CHANNEL_ID`, `CLAWOPS_KAKAO_TEMPLATE_ID`에 넣으세요. 다른 템플릿을 사용한다면 아래 `variables`도 그 템플릿의 변수명에 맞게 바꿉니다.
 
-```text
-POST /v1/accounts/{accountId}/messages
-```
+## 3. 알림톡 한 건 보내기
+
+채널 ID, 템플릿 ID, 템플릿이 요구하는 변수를 전달합니다. 알림톡 본문은 승인된 템플릿이 정하므로 일반 문자 필드인 `Body`/`body`를 넣지 않습니다.
 
 <CodeBlocks>
 ```bash title="cURL"
-curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/messages" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+curl -X POST "https://api.claw-ops.com/v1/accounts/${CLAWOPS_ACCOUNT_ID}/messages" \
+  -H "Authorization: Bearer ${CLAWOPS_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d '{
-    "To": "01012345678",
-    "From": "07012341234",
-    "Kakao": {
-      "ChannelId": "clx9kak0001",
-      "TemplateId": "clx9tpl0001",
-      "Variables": { "고객명": "홍길동" }
+  -d "{
+    \"To\": \"${CLAWOPS_TO}\",
+    \"From\": \"${CLAWOPS_FROM}\",
+    \"Kakao\": {
+      \"ChannelId\": \"${CLAWOPS_KAKAO_CHANNEL_ID}\",
+      \"TemplateId\": \"${CLAWOPS_KAKAO_TEMPLATE_ID}\",
+      \"Variables\": { \"인증번호\": \"490001\" }
     },
-    "Fallback": { "Body": "주문이 접수되었습니다." }
-  }'
+    \"Fallback\": { \"Disabled\": true }
+  }"
+```
+
+```typescript title="TypeScript"
+import ClawOps from "@teamlearners/clawops";
+
+const client = new ClawOps(); // CLAWOPS_API_KEY, CLAWOPS_ACCOUNT_ID 사용
+const message = await client.messages.create({
+  to: process.env.CLAWOPS_TO!,
+  from: process.env.CLAWOPS_FROM!,
+  kakao: {
+    channelId: process.env.CLAWOPS_KAKAO_CHANNEL_ID!,
+    templateId: process.env.CLAWOPS_KAKAO_TEMPLATE_ID!,
+    variables: { 인증번호: "490002" },
+  },
+  fallback: { disabled: true },
+});
+
+console.log(message.messageId, message.status, message.type);
+```
+
+```python title="Python"
+import os
+
+from clawops import ClawOps
+
+client = ClawOps()  # CLAWOPS_API_KEY, CLAWOPS_ACCOUNT_ID 사용
+message = client.messages.create(
+    to=os.environ["CLAWOPS_TO"],
+    from_=os.environ["CLAWOPS_FROM"],
+    kakao={
+        "channel_id": os.environ["CLAWOPS_KAKAO_CHANNEL_ID"],
+        "template_id": os.environ["CLAWOPS_KAKAO_TEMPLATE_ID"],
+        "variables": {"인증번호": "490003"},
+    },
+    fallback={"disabled": True},
+)
+
+print(message.message_id, message.status, message.type)
 ```
 </CodeBlocks>
 
-<Info>
-  알림톡에는 `Body`를 넣지 않습니다. 본문과 버튼은 검수된 템플릿이 정하고 발송 시점에는 `Variables`만 채울 수 있습니다.
-</Info>
+세 예제를 공개 배포본인 TypeScript SDK `0.36.0`, Python SDK `0.47.0`과 cURL로 실행한 결과입니다.
 
-`Fallback.Body`를 지정하면 알림톡 전달에 실패했을 때 해당 내용으로 문자를 발송합니다. 대체 문자를 원하지 않으면 `Fallback.Disabled`를 `true`로 지정하세요.
+| 실행 방법 | 변수 값 | 접수 응답 | 최종 상태 |
+| --- | --- | --- | --- |
+| cURL | `490001` | `201`, `queued`, `ata` | `sent` |
+| TypeScript SDK | `490002` | `201`, `queued`, `ata` | `sent` |
+| Python SDK | `490003` | `201`, `queued`, `ata` | `sent` |
+
+```json title="실제 발송 응답 (201)"
+{
+  "messageId": "MG8e59e19c6d88f2731ad85e88192407d7",
+  "status": "queued",
+  "type": "ata",
+  "to": "010****4897",
+  "from": "07052361008",
+  "body": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: 490001",
+  "direction": "outbound",
+  "dateCreated": "2026-09-02T06:12:53.867Z",
+  "dateUpdated": null
+}
+```
+
+`type: "ata"`가 카카오 알림톡을 뜻합니다. 응답의 `body`에는 템플릿 변수를 치환한 결과가 들어갑니다. `queued`는 ClawOps가 요청을 접수했다는 뜻이며 수신자에게 전달됐다는 뜻은 아닙니다.
+
+## 4. 최종 전달 결과 확인하기
+
+발송 응답의 `messageId`로 단건 조회합니다. `sent`가 최종 전달 성공이며, `failed`라면 응답과 콘솔 메시지 기록에서 실패 사유를 확인합니다.
+
+<CodeBlocks>
+```bash title="cURL"
+MESSAGE_ID="YOUR_MESSAGE_ID"
+
+curl "https://api.claw-ops.com/v1/accounts/${CLAWOPS_ACCOUNT_ID}/messages/${MESSAGE_ID}" \
+  -H "Authorization: Bearer ${CLAWOPS_API_KEY}"
+```
+
+```typescript title="TypeScript"
+import ClawOps from "@teamlearners/clawops";
+
+const client = new ClawOps();
+const message = await client.messages.get(
+  "YOUR_MESSAGE_ID",
+);
+
+console.log(message.status, message.dateUpdated);
+```
+
+```python title="Python"
+from clawops import ClawOps
+
+client = ClawOps()
+message = client.messages.get(
+    "YOUR_MESSAGE_ID"
+)
+
+print(message.status, message.date_updated)
+```
+</CodeBlocks>
+
+```json title="실제 최종 조회 응답 (200, 발췌)"
+{
+  "messageId": "MG8e59e19c6d88f2731ad85e88192407d7",
+  "status": "sent",
+  "type": "ata",
+  "to": "010****4897",
+  "from": "07052361008",
+  "body": "아래 인증번호를 확인하시고\n서비스 화면에 입력해주세요.\n\n인증번호: 490001",
+  "dateCreated": "2026-09-02T06:12:53.452Z",
+  "dateUpdated": "2026-09-02T06:13:04.731Z"
+}
+```
+
+[콘솔 메시지 기록](https://platform.claw-ops.com/message-logs)에서도 형식이 **알림톡**, 상태가 **발송 완료**인지 확인할 수 있습니다. 운영 환경에서는 `message.sent`와 `message.failed` 웹훅을 등록해 비동기로 최종 결과를 처리하세요.
+
+## REST와 SDK 필드 대응
+
+세 예제는 이름만 각 언어 관례에 맞게 바뀌며 같은 요청 필드를 전송합니다.
+
+| REST JSON | TypeScript | Python |
+| --- | --- | --- |
+| `To` | `to` | `to` |
+| `From` | `from` | `from_` |
+| `Kakao.ChannelId` | `kakao.channelId` | `kakao["channel_id"]` |
+| `Kakao.TemplateId` | `kakao.templateId` | `kakao["template_id"]` |
+| `Kakao.Variables` | `kakao.variables` | `kakao["variables"]` |
+| `Fallback.Disabled` | `fallback.disabled` | `fallback["disabled"]` |
+
+`Type`/`type`은 생략해도 `Kakao`/`kakao`가 있으면 알림톡으로 처리됩니다. 명시한다면 값은 `ata`입니다.
+
+## 대체 문자 설정
+
+알림톡 전달 실패 시 SMS/LMS로 대신 보낼 수 있습니다. 대체 문자는 알림톡과 별도의 메시지 한 건으로 기록되며 문자 요금이 별도로 청구됩니다.
+
+| 설정 | 동작 |
+| --- | --- |
+| `Fallback` 생략 | 치환된 템플릿 본문으로 대체 문자 발송 |
+| `Fallback.Body` 지정 | 지정한 본문으로 대체 문자 발송 |
+| `Fallback.Disabled: true` | 알림톡 실패 시 문자 발송 안 함 |
 
 <Warning>
-  응답의 `queued`는 발송 요청이 접수됐다는 뜻이며 전달 성공을 보장하지 않습니다. 최종 결과는 계정에 등록한 `message.sent` 또는 `message.failed` webhook으로 확인하세요.
+  개발 중에는 의도하지 않은 문자 발송을 막기 위해 `Fallback.Disabled: true`를 권장합니다. 운영에서 대체 문자를 사용한다면 알림톡과 문자 비용이 각각 발생할 수 있음을 고려하세요.
 </Warning>
 
-문자 메시지 발송이 필요하다면 [문자 메시지 가이드](/messages)를 확인하세요.
+## 자주 막히는 지점
+
+| 증상 또는 오류 코드 | 확인할 내용 |
+| --- | --- |
+| 템플릿이 조회되지 않음 | 템플릿이 속한 채널의 ClawOps `channelId`인지 확인합니다. `searchId`가 아닙니다. |
+| `sendable: false` | 카카오 검수 상태와 휴면 여부를 콘솔에서 확인합니다. |
+| `kakao_variable_missing` | 조회 응답의 `variables`에 나온 변수를 모두 전달했는지 확인합니다. |
+| `kakao_variable_unknown` | 승인 템플릿에 없는 변수를 추가하지 않았는지 확인합니다. |
+| `kakao_body_not_allowed` | 최상위 `Body`/`body`를 제거합니다. 본문은 승인된 템플릿이 정합니다. |
+| 응답이 `queued`에서 끝남 | 단건 조회 또는 웹훅으로 최종 `sent`/`failed` 상태를 확인합니다. |
+
+문자 메시지를 보내려면 [문자 메시지 가이드](/messages)를 확인하세요.
