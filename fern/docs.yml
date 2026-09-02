@@ -54,10 +54,13 @@ navigation:
         contents:
           - page: Voice Agent
             path: docs/pages/guides/voice-agent.mdx
+            hidden: true
           - page: VoiceML
             path: docs/pages/guides/voiceml.mdx
+            hidden: true
           - page: Webhooks
             path: docs/pages/guides/webhooks.mdx
+            hidden: true
           - page: Network
             path: docs/pages/guides/network.mdx
             hidden: true
