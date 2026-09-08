@@ -87,6 +87,7 @@ navigation:
           - page: 통화 전환 결과
             path: docs/pages/guides/call-transfers.mdx
             icon: right-left
+            hidden: true
           - section: 이메일
             icon: envelope
             contents:
