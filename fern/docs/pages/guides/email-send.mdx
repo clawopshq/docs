@@ -1,0 +1,199 @@
+---
+title: 이메일 보내기
+description: 검증한 도메인으로 이메일을 발송합니다. 수신자·첨부·답장 스레드와 과금 단위, 중복 발송을 막는 멱등키를 안내합니다.
+slug: email-send
+---
+
+도메인 검증을 마쳤다면 그 도메인의 주소로 메일을 보낼 수 있습니다.
+
+```text
+POST /v1/accounts/{accountId}/emails
+```
+
+<Warning>
+  `from` 은 **이 계정에서 검증(`verified`)된 도메인의 주소**여야 합니다. 검증 전이거나 남의 계정 도메인이면 `403 email_domain_not_verified` 입니다. 아직이라면 [도메인 연결하기](/email-domains)를 먼저 보세요.
+</Warning>
+
+## 기본 발송
+
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/emails" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "no-reply@example.com",
+    "to": ["customer@gmail.com"],
+    "subject": "주문이 접수되었습니다",
+    "body": "주문번호 1024 접수되었습니다."
+  }'
+```
+
+<Note>
+  이메일은 아직 SDK 에 포함되어 있지 않습니다. HTTP 로 직접 호출하세요.
+</Note>
+
+### 필드
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `from` | string | **필수.** 검증된 도메인의 발신 주소입니다. |
+| `to` | string[] | **필수.** 수신 주소입니다. `cc`·`bcc` 와 **합쳐** 50명을 넘을 수 없습니다. |
+| `subject` | string | **필수.** 최대 998자. 한글을 그대로 쓸 수 있습니다. |
+| `body` | string | 평문 본문. `html` 과 **둘 중 하나 이상** 필요합니다. |
+| `html` | string | HTML 본문. `body` 와 둘 중 하나 이상 필요합니다. |
+| `cc` | string[] | 참조. **수신자 수에 포함됩니다.** |
+| `bcc` | string[] | 숨은 참조. 다른 수신자에게는 안 보이지만 **수신자 수에 포함되고 과금됩니다.** |
+| `attachmentUrl` | string[] | 첨부 파일 URL. 최대 10개. |
+| `replyTo` | string[] | 답장 주소(`Reply-To`). 최대 10개. |
+| `inReplyTo` | string | 답장하는 원본 메일의 `Message-ID`. |
+| `references` | string[] | 대화의 조상 사슬. 오래된 것이 앞입니다. |
+| `idempotencyKey` | string | 발송 멱등키. 재시도 경로가 있을 때만 채웁니다. |
+
+<Tip>
+  `body` 와 `html` 을 **함께** 주면 수신자의 메일 클라이언트가 표시 가능한 쪽을 고릅니다. HTML 만 보내는 것보다 평문을 함께 주는 편이 스팸 판정에도 유리합니다.
+</Tip>
+
+## 과금은 "통"이 아니라 "수신자"입니다
+
+<Warning>
+  한 번 호출해 3명에게 보내면 **3건**입니다. `to`·`cc`·`bcc` 를 가리지 않습니다.
+</Warning>
+
+이건 ClawOps 만의 규칙이 아니라 이메일 업계의 공통 계산법입니다. 수신거부 상태인 주소는 **보내지 않으므로 과금되지 않습니다** — 50명 중 2명이 수신거부였다면 48건입니다.
+
+## 플랜별 발송 한도
+
+수신자 수 기준으로 하루와 한 달에 보낼 수 있는 양이 정해져 있습니다.
+
+| 플랜 | 하루 | 한 달 |
+| --- | ---: | ---: |
+| Trial | 사용 불가 | 사용 불가 |
+| Individual | 500 | 5,000 |
+| Business | 3,000 | 30,000 |
+
+<Note>
+  이 숫자도 **수신자 수**입니다. 50명에게 한 번 보내면 50을 씁니다. 하루 기준은 한국 시간 자정에 초기화됩니다.
+</Note>
+
+<Warning>
+  Trial 플랜은 이메일을 쓸 수 없습니다(`422 plan_not_supported`). 유료 플랜으로 변경한 뒤 사용하세요. 한도를 더 올려야 한다면 고객센터로 문의해 주세요.
+</Warning>
+
+## 첨부
+
+첨부는 **URL 로 전달합니다.** 파일 바이트를 요청 본문에 실을 수 없습니다.
+
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/emails" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "no-reply@example.com",
+    "to": ["customer@gmail.com"],
+    "subject": "영수증",
+    "body": "영수증을 첨부합니다.",
+    "attachmentUrl": ["https://files.example.com/receipt-1024.pdf"]
+  }'
+```
+
+우리가 그 URL 을 **서버에서 내려받아** 메일에 붙입니다. 그래서 URL 은 인증 없이 접근 가능한 공개 주소여야 합니다.
+
+| 상황 | 결과 |
+| --- | --- |
+| `http` 이거나 사설 대역·루프백·클라우드 메타데이터 주소 | `400 attachment_url_not_allowed` |
+| 내려받기 실패(404·타임아웃 등) | `400 attachment_fetch_failed` — **메일은 나가지 않습니다** |
+| 공급자가 거부하는 확장자(실행 파일 등) | `502` — 요청 검증 단계에서는 걸러지지 않습니다 |
+
+파일명은 URL 경로에서 가져옵니다.
+
+### 크기 상한
+
+메시지 **전체**가 5MB 까지입니다.
+
+<Warning>
+  이 값은 첨부를 **base64 로 인코딩한 뒤** 기준입니다. 인코딩하면 약 1.37배로 부풀기 때문에 **원본 파일 기준으로는 약 3.6MB** 입니다. 넘으면 `400 message_too_large` 입니다.
+</Warning>
+
+대부분의 거래 메일(영수증·주문확인·계약서 PDF)은 이 안에 들어갑니다. 더 큰 파일은 첨부 대신 **링크로 보내세요** — 받는 사람의 메일 서버가 큰 첨부를 거부하는 경우가 많아(Gmail 25MB · Outlook 20MB 대) 반송으로 돌아올 가능성이 높습니다.
+
+## 답장을 한 대화로 잇기
+
+받는 사람의 메일 앱에서 주고받은 메일이 **하나의 대화로 묶이게** 하려면 두 필드를 채웁니다.
+
+| 필드 | 넣을 값 |
+| --- | --- |
+| `inReplyTo` | 답장하는 원본 메일의 `Message-ID` |
+| `references` | 대화의 조상 사슬. 원본 메일 `m` 에 답장한다면 `[...m.references, m.messageId]` |
+
+원본의 `Message-ID` 는 조회 응답이나 `email.received` webhook 의 `messageId` 에 있습니다. 꺾쇠(`< >`)는 있어도 없어도 됩니다.
+
+<Warning>
+  **헤더가 완벽해도 제목이 다르면 Gmail·Outlook 은 새 대화로 엽니다.** 두 클라이언트는 정규화한 제목을 함께 봅니다. 원본 제목에 `Re: ` 를 붙인 형태를 그대로 쓰고, 이미 `Re:` 로 시작하면 덧붙이지 마세요.
+</Warning>
+
+<Note>
+  `replyTo` 는 **스레드와 무관합니다.** 받는 사람이 답장할 주소를 `from` 과 다르게 지정하는 필드입니다 — `no-reply@` 로 보내고 `support@` 로 받는 구성에 씁니다.
+</Note>
+
+긴 대화는 공급자의 헤더 길이 상한 때문에 RFC 5537 §3.4.4 에 따라 **줄여서** 나갑니다. 첫 항목과 최근 항목은 남고 가운데가 빠집니다. 발송이 실패하지는 않으며, **응답의 `references` 가 실제로 나간 목록**입니다.
+
+## 중복 발송 막기
+
+재시도 경로가 있다면 `idempotencyKey` 를 채웁니다. 같은 계정에서 같은 키로 다시 요청하면 **발송하지 않고** 1회차 결과를 그대로 돌려줍니다.
+
+```json
+{
+  "from": "no-reply@example.com",
+  "to": ["customer@gmail.com"],
+  "subject": "주문이 접수되었습니다",
+  "body": "주문번호 1024 접수되었습니다.",
+  "idempotencyKey": "order-1024-receipt"
+}
+```
+
+<Warning>
+  **본문이 달라도 검사하지 않습니다.** 같은 키로 다른 내용을 보내면 새 메일은 나가지 않고 1회차 결과가 돌아옵니다. 키는 *메일 한 통* 단위로 만드세요(`order-1024-접수` 처럼). 만료는 없습니다.
+</Warning>
+
+<Note>
+  순차 재시도를 막는 용도입니다. 같은 키로 **동시에** 두 요청이 들어오면 둘 다 나갈 수 있습니다. 미지정이면 매번 발송하고, 빈 문자열은 `400` 입니다 — 템플릿에서 빈 값이 들어가 멱등이 조용히 꺼지는 걸 막기 위해서입니다.
+</Note>
+
+## 발송 결과는 나중에 확정됩니다
+
+<Warning>
+  `201` 은 **공급자가 접수했다**는 뜻이지 수신함에 도착했다는 뜻이 아닙니다.
+</Warning>
+
+실제 전달·반송·수신거부는 비동기로 확인되며 webhook 으로 전달됩니다.
+
+| 이벤트 | 뜻 |
+| --- | --- |
+| `email.delivered` | 상대 메일 서버가 받았습니다 |
+| `email.bounced` | 반송됐습니다 |
+| `email.complained` | 받는 사람이 스팸으로 신고했습니다 |
+| `email.failed` | 발송에 실패했습니다 |
+| `email.received` | 답장이 왔습니다 (수신을 켠 도메인) |
+
+⭐ **영구 반송과 스팸 신고는 수신거부에 자동으로 오릅니다** — 그 주소로는 다음부터 나가지 않고 과금도 되지 않습니다. 자세한 것은 [수신거부와 반송](/email-suppression)을 보세요.
+
+## 자주 만나는 오류
+
+| 코드 | 원인 |
+| --- | --- |
+| `403 email_domain_not_verified` | `from` 도메인이 검증 전이거나 다른 계정 소유입니다 |
+| `400 body_required` | `body` 와 `html` 이 둘 다 없습니다 |
+| `400 too_many_recipients` | `to`+`cc`+`bcc` 가 50명을 넘었습니다 |
+| `400 message_too_large` | 인코딩 후 5MB(원본 약 3.6MB)를 넘었습니다 |
+| `400 attachment_url_not_allowed` | 첨부 URL 이 `https` 가 아니거나 사설 대역을 가리킵니다 |
+| `400 attachment_fetch_failed` | 첨부 URL 을 내려받지 못했습니다 |
+| `422 recipient_blocked` | 수신자가 **전원** 수신거부 상태입니다 |
+| `422 plan_not_supported` | 이메일을 쓸 수 없는 플랜입니다(Trial) |
+| `422 daily_quota_exceeded` | 오늘 한도를 넘었습니다 |
+| `422 quota_exceeded` | 이번 달 한도를 넘었습니다 |
+| `403 email_blocked` | 발송이 제한된 계정입니다 — 고객센터로 문의해 주세요 |
+| `403 email_sending_paused` | 계정의 발송이 정지됐습니다 — 고객센터로 문의해 주세요 |
+
+<Note>
+  다음: [수신거부와 반송](/email-suppression)
+</Note>

@@ -87,6 +87,15 @@ navigation:
           - page: 통화 전환 결과
             path: docs/pages/guides/call-transfers.mdx
             icon: right-left
+          - section: 이메일
+            icon: envelope
+            contents:
+              - page: 도메인 연결하기
+                path: docs/pages/guides/email-domains.mdx
+              - page: 이메일 보내기
+                path: docs/pages/guides/email-send.mdx
+              - page: 수신거부와 반송
+                path: docs/pages/guides/email-suppression.mdx
       - section: SDKs
         contents:
           - page: TypeScript / JavaScript

@@ -1,0 +1,130 @@
+---
+title: 도메인 연결하기
+description: 이메일을 보내려면 먼저 도메인 소유를 증명해야 합니다. 도메인 등록, CNAME 추가, 검증 확인, 수신 켜기까지 안내합니다.
+slug: email-domains
+---
+
+ClawOps 이메일은 **고객이 소유한 도메인**으로 나갑니다. `no-reply@example.com` 처럼 받는 사람이 아는 주소로 보내려면, 그 도메인이 정말 내 것임을 DNS 로 증명해야 합니다.
+
+절차는 세 단계입니다.
+
+1. 콘솔이나 API 로 **도메인을 등록**하면 CNAME 레코드 3건이 발급됩니다.
+2. 그 레코드를 도메인 DNS 에 **그대로 추가**합니다.
+3. **검증을 확인**하면 `verified` 가 되고, 그때부터 발송할 수 있습니다.
+
+<Warning>
+  등록만으로는 발송할 수 없습니다. 도메인이 `pending` 인 동안 그 주소로 보내면 `403 email_domain_not_verified` 입니다.
+</Warning>
+
+## 1. 도메인 등록
+
+[콘솔의 발신 도메인](https://platform.claw-ops.com/email-domains)에서 **도메인 등록**을 누르고 도메인을 입력합니다. 이메일 주소가 아니라 **도메인만** 넣습니다.
+
+![도메인 등록 화면](/assets/email/domain-register.jpg)
+
+하위 도메인도 됩니다. `example.com` 과 `mail.example.com` 은 **별개**라, 둘 다 쓰려면 각각 등록해야 합니다.
+
+<Tip>
+  업무 메일을 Google Workspace·Microsoft 365 로 쓰고 있다면 루트 도메인 대신 `mail.example.com` 같은 **하위 도메인을 따로 등록**하는 편이 안전합니다. 뒤에 나오는 수신 기능이 루트 도메인의 메일 흐름을 바꾸기 때문입니다.
+</Tip>
+
+API 로 등록할 수도 있습니다.
+
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/email-domains" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "domain": "mail.example.com" }'
+```
+
+응답의 `dnsRecords` 3건이 아래에서 심을 CNAME 입니다.
+
+등록은 **멱등**입니다. 같은 계정이 같은 도메인을 다시 등록하면 새로 만들지 않고 기존 항목을 `200` 으로 돌려줍니다. 새로 만들어진 경우에만 `201` 입니다.
+
+<Note>
+  한 도메인은 ClawOps 전체에서 한 계정만 소유합니다. 다른 계정이 이미 등록했다면 `409` 입니다.
+</Note>
+
+## 2. CNAME 레코드 추가
+
+등록하면 CNAME 3건이 나옵니다. 이 값을 도메인 DNS 에 그대로 추가하세요.
+
+![확인 대기 상태와 CNAME 레코드](/assets/email/domain-pending.jpg)
+
+<Warning>
+  **72시간 안에 소유를 증명하지 않으면 등록이 회수됩니다.** 그 도메인은 다른 계정이 등록할 수 있게 됩니다. 화면에도 만료 시각이 표시됩니다.
+</Warning>
+
+### 이름 뒤에 도메인이 붙는 DNS 서비스
+
+가비아·Cloudflare 등 상당수 DNS 서비스는 레코드 이름 뒤에 도메인을 **자동으로 붙입니다.** 화면에 나온 이름을 통째로 넣으면 `..._domainkey.mail.example.com.mail.example.com` 처럼 도메인이 두 번 들어가고, 검증은 영원히 끝나지 않습니다.
+
+그런 서비스에서는 이름에서 **뒤쪽 도메인을 뺀 앞부분만** 입력하세요.
+
+| | 입력할 값 |
+| --- | --- |
+| 화면에 표시된 이름 | `muqghfeb…._domainkey.mail.example.com` |
+| 도메인이 자동으로 붙는 서비스 | `muqghfeb…._domainkey` |
+
+값(`…dkim.amazonses.com`)은 어느 쪽이든 그대로 넣습니다.
+
+## 3. 검증 확인
+
+DNS 가 퍼진 뒤 **검증 상태 확인**을 누르면 상태가 갱신됩니다. `검증됨` 이 되면 그 도메인의 주소로 발송할 수 있습니다.
+
+![검증된 도메인과 수신 설정](/assets/email/domain-verified.jpg)
+
+DNS 전파는 보통 수 분에서 수 시간이 걸립니다. 대기 중에는 `pending` 이 그대로이므로 몇 분 간격으로 다시 확인하세요.
+
+```bash title="cURL"
+curl -X POST "https://api.claw-ops.com/v1/accounts/YOUR_ACCOUNT_ID/email-domains/YOUR_DOMAIN_ID/verification" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Length: 0"
+```
+
+<Warning>
+  이 API 는 본문이 없지만 **`Content-Length: 0` 헤더는 필요합니다.** 본문도 이 헤더도 없는 POST 는 ClawOps 에 닿기 전에 게이트웨이가 `411 Length Required` 로 거절합니다. 대부분의 HTTP 클라이언트와 SDK 는 자동으로 붙이지만 `curl -X POST` 는 붙이지 않습니다.
+</Warning>
+
+### 확인 대기가 끝나지 않을 때
+
+| 증상 | 확인할 것 |
+| --- | --- |
+| 레코드를 넣었는데 계속 `확인 대기` | 이름에 도메인이 두 번 들어갔는지 (위의 자동 추가 문제) |
+| 값 끝의 점(`.`) | 서비스에 따라 `…amazonses.com.` 처럼 끝점을 요구하거나 금지합니다. 다른 레코드의 표기를 따르세요 |
+| 3건 중 일부만 넣음 | **3건 모두** 있어야 검증됩니다 |
+| 한참 뒤 `검증 실패` 로 바뀜 | CNAME 이 사라졌는지 확인하세요. 레코드가 없어지면 상태가 내려갑니다 |
+
+<Note>
+  검증에 일시적으로 실패해도 **이미 `verified` 인 도메인이 우리 쪽 장애로 내려가지는 않습니다.** 공급자에 연결하지 못하면 `503` 이고 저장된 상태는 그대로입니다.
+</Note>
+
+## 4. 수신 켜기 (선택)
+
+받는 사람이 **답장을 보내면 그것을 받고 싶을 때** 수신을 켭니다. 발송만 할 거라면 이 단계는 건너뛰어도 됩니다.
+
+수신은 도메인 검증을 마친 뒤에만 켤 수 있습니다. 켜면 MX 레코드가 나오고, 그 레코드를 DNS 에 추가해야 실제로 메일이 들어옵니다.
+
+<Warning>
+  **MX 는 그 도메인의 메일 수신처를 바꾸는 레코드입니다.**
+
+  - 루트 도메인(`example.com`)에 얹으면 그 도메인의 **모든** 메일이 ClawOps 로 옵니다. Google Workspace·Microsoft 365 를 쓰고 있다면 업무 메일이 끊깁니다 — 수신 전용 하위 도메인을 따로 등록해서 쓰세요.
+  - 이 MX 의 우선순위가 다른 MX 보다 **낮아야** 합니다(같아도 메일이 둘로 나뉩니다).
+  - 와일드카드 DNS(`*.example.com`)가 있어도 이 도메인에 직접 넣은 MX 가 이깁니다.
+</Warning>
+
+수신을 켜면 받은 메일은 [이메일 기록](/email-suppression#이메일-기록)에 남고, `email.received` webhook 으로도 전달됩니다.
+
+## 등록한 도메인 보기
+
+콘솔 목록에서 도메인별 검증 상태와 수신 여부를 한눈에 볼 수 있습니다.
+
+![발신 도메인 목록](/assets/email/domain-list.jpg)
+
+## 도메인 삭제
+
+도메인을 삭제하면 그 주소로는 더 이상 보낼 수 없습니다. 다시 등록할 수는 있지만 **CNAME 이 새로 발급되므로 DNS 레코드를 다시 심어야 합니다.**
+
+<Note>
+  다음: [이메일 보내기](/email-send)
+</Note>
