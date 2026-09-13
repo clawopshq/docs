@@ -5002,6 +5002,24 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "호출 빈도 제한 (`rate_limited`). 문자 발송(SMS·LMS·MMS, 문자 대체발송을 켠 알림톡)은 계정당 분당 120건, API 키당 분당 120건까지입니다. 한 계정이 여러 API 키·경로로 보내도 계정 기준으로 합산됩니다. `Retry-After` 헤더의 초가 지난 뒤 다시 보내세요. 거절된 요청은 발송되지 않고 메시지 이력에도 남지 않습니다.",
+            "headers": {
+              "Retry-After": {
+                "description": "다시 시도할 수 있을 때까지 남은 초",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
