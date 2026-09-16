@@ -37,7 +37,18 @@ jobs:
             exit 1
           fi
 
+      # ⚠️ `fern generate` 는 API 정의 파싱에 실패해도 **exit 0** 이다. "Skipping API" 를
+      #    한 줄 찍고 문서만 올린 뒤 초록불로 끝나므로, API 레퍼런스가 통째로 옛 버전에
+      #    머물러도 아무도 모른다(2026-09-16 에 실제로 그랬다 — 중복 매핑 키 한 곳 때문에
+      #    전환 API 와 이메일 API 가 사이트에 없는 채로 배포가 성공으로 끝났다).
+      #    그래서 출력을 붙잡아 그 문구가 나오면 실패시킨다.
       - name: Publish Docs
         env:
           FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
-        run: fern generate --docs --no-prompt
+        run: |
+          set -o pipefail
+          fern generate --docs --no-prompt 2>&1 | tee /tmp/fern-publish.log
+          if grep -qE "Skipping API|Failed to parse" /tmp/fern-publish.log; then
+            echo "::error::Fern 이 API 정의를 건너뛰었습니다 — API 레퍼런스가 갱신되지 않습니다."
+            exit 1
+          fi
