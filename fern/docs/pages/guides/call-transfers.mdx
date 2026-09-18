@@ -75,7 +75,8 @@ curl -X POST "https://api.claw-ops.com/v1/accounts/{accountId}/calls/{callId}/ac
 | `whisper` | 아니오 | `warm` 일 때 대상에게만 들려줄 안내입니다. 발신자에게는 들리지 않습니다 |
 | `callerIdMode` | 아니오 | `original` 을 주면 걸려 온 전화의 발신자 번호가 대상 단말에 표시됩니다. 통신사망 직수신 인입에만 성립하며, 성립하지 않으면 계정 번호로 표시합니다. 받는 쪽에 표시되는 번호만 바뀌는 것이고 통화 자체는 계정 번호에서 넘기는 전환이라, 받는 장비에 따라 계정 번호가 표시될 수도 있습니다 |
 | `afterTransfer` | 아니오 | `return`(기본)은 전환이 끝나도 통화를 유지하고 에이전트가 이어받습니다. `terminate` 는 통화를 종료합니다 |
-| `failureMessage` | 아니오 | 전환이 연결되지 않아 통화를 종료할 때 **발신자에게** 들려줄 문장입니다. 주지 않으면 아무 말 없이 끊깁니다 |
+| `failureMessage` | 아니오 | 전환이 연결되지 않아 통화를 종료할 때 **발신자에게** 들려줄 문장입니다. 주지 않으면 아무 말 없이 끊깁니다. 200자 이하 |
+| `failureVoice` | 아니오 | `failureMessage` 를 읽을 음성입니다. `<Say>` 의 `voice` 와 같은 형식이며, 생략하면 무료 기본 음성으로 읽습니다 |
 | `requestId` | 아니오 | 같은 값의 재요청은 새 전환을 만들지 않습니다(멱등). 전환 webhook 에 `RequestId` 로 되돌아옵니다. 255자 이하 |
 
 전체 파라미터와 오류 코드는 API Reference 의 **Calls → 진행 중 통화 전환** 에 있습니다.
@@ -106,8 +107,8 @@ curl -X POST "https://api.claw-ops.com/v1/accounts/{accountId}/calls/{callId}/ac
 
 재생이 끝나면 통화가 종료됩니다. 발신자가 재생 도중에 끊으면 거기서 끝납니다 — `transferStatus`
 (`no-answer`·`busy` 등)는 안내와 무관하게 그대로 남고, Status Callback 의 `transfer` 이벤트는
-**안내를 기다리지 않고** 먼저 나갑니다. 문장은 200자까지, 에이전트 음성으로 읽힙니다
-(`failureVoice` 로 바꿀 수 있습니다).
+**안내를 기다리지 않고** 먼저 나갑니다. 문장은 200자까지이며, `failureVoice` 를 주지 않으면
+무료 기본 음성으로 읽습니다(`whisperVoice` 와 같은 형식).
 
 <Note>
   `whisper` 와 듣는 사람이 반대입니다. `whisper` 는 전화를 **받은** 대상에게만 들리고,
