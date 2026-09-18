@@ -3548,6 +3548,17 @@
                     "description": "전환이 연결될 때까지 발신자에게 들려줄 대기 음악.",
                     "example": "default"
                   },
+                  "failureMessage": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "전환이 연결되지 않았을 때(무응답·통화 중·대상 실패) **발신자에게** 들려주고 통화를 끝낼 문장. 지정하지 않으면 아무 안내 없이 종료됩니다.\n\n`whisper` 와 듣는 사람이 반대입니다 — `whisper` 는 전화를 **받은** 대상에게만 들립니다.\n\n`afterTransfer` 가 `return` 이면 재생되지 않습니다(에이전트가 통화를 이어받습니다). 다만 이어받을 에이전트 연결이 없어 `terminate` 로 처리된 통화에서는 재생됩니다.\n",
+                    "example": "죄송합니다. 담당자와 연결되지 않았습니다. 잠시 후 다시 걸어 주세요."
+                  },
+                  "failureVoice": {
+                    "type": "string",
+                    "description": "`failureMessage` 를 읽을 음성. `whisperVoice` 와 같은 형식입니다 — 생략하면 무료 기본 음성, `cartesia:<음성 ID>` 를 지정하면 고품질 음성으로 읽고 읽은 글자 수만큼 과금됩니다.\n",
+                    "example": "cartesia:4dd4630e-19e0-4243-bca0-676ff85119b7"
+                  },
                   "timeout": {
                     "type": "integer",
                     "minimum": 5,
