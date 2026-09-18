@@ -73,7 +73,7 @@ curl -X POST "https://api.claw-ops.com/v1/accounts/{accountId}/calls/{callId}/ac
 | `to` | 예 | 전환 대상. `destinationType` 이 `pstn`(기본)이면 전화번호, `sip` 이면 SIP URI |
 | `mode` | 아니오 | `blind`(기본)는 받으면 바로 연결합니다. `warm` 은 `whisper` 안내를 대상에게만 들려준 뒤 연결합니다 |
 | `whisper` | 아니오 | `warm` 일 때 대상에게만 들려줄 안내입니다. 발신자에게는 들리지 않습니다 |
-| `callerIdMode` | 아니오 | `original` 을 주면 걸려 온 전화의 원 발신자 번호가 대상 단말에 표시됩니다. 통신사망 직수신 인입에만 성립하며, 성립하지 않으면 계정 번호로 표시합니다 |
+| `callerIdMode` | 아니오 | `original` 을 주면 걸려 온 전화의 발신자 번호가 대상 단말에 표시됩니다. 통신사망 직수신 인입에만 성립하며, 성립하지 않으면 계정 번호로 표시합니다. 받는 쪽에 표시되는 번호만 바뀌는 것이고 통화 자체는 계정 번호에서 넘기는 전환이라, 받는 장비에 따라 계정 번호가 표시될 수도 있습니다 |
 | `afterTransfer` | 아니오 | `return`(기본)은 전환이 끝나도 통화를 유지하고 에이전트가 이어받습니다. `terminate` 는 통화를 종료합니다 |
 | `requestId` | 아니오 | 같은 값의 재요청은 새 전환을 만들지 않습니다(멱등). 전환 webhook 에 `RequestId` 로 되돌아옵니다. 255자 이하 |
 
@@ -123,7 +123,7 @@ VoiceML 의 `<Dial>` 은 통화 중에 다른 목적지를 붙이는 것이지, 
 | `completed` | 대상이 받아 통화가 이뤄졌고 정상 종료됐습니다. |
 | `no-answer` | 벨은 울렸으나 받지 않았습니다. |
 | `busy` | 대상이 통화 중입니다. |
-| `canceled` | 연결되기 전에 취소되거나 중단됐습니다. 원 발신자가 먼저 끊는 경우가 여기 들어갑니다. |
+| `canceled` | 연결되기 전에 취소되거나 중단됐습니다. 걸려 온 통화의 발신자가 먼저 끊는 경우가 여기 들어갑니다. |
 | `failed` | 그 외 실패입니다. 사유는 `transferHangupCauseQ850` 과 `transferSipResponseCode` 로 봅니다. |
 
 <Note>

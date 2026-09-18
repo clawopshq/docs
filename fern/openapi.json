@@ -3520,7 +3520,7 @@
                   },
                   "callerId": {
                     "type": "string",
-                    "description": "전환 대상 단말에 표시할 번호. 계정이 보유한 번호이거나, 통신사망을 통해 직접 걸려 온 통화의 원 발신자 번호만 지정할 수 있습니다. 그 외에는 403 `UNOWNED_CALLER_ID` 로 거절됩니다. 생략하면 계정 번호가 표시됩니다.\n",
+                    "description": "전환 대상 단말에 표시할 번호. 계정이 보유한 번호이거나, 통신사망을 통해 직접 걸려 온 통화의 발신자 번호만 지정할 수 있습니다. 그 외에는 403 `UNOWNED_CALLER_ID` 로 거절됩니다. 생략하면 계정 번호가 표시됩니다. 걸려 온 통화의 발신자 번호를 지정해도 받는 쪽 표시만 바뀝니다 — 통화 자체는 계정 번호에서 넘기는 전환이라, 받는 장비에 따라 계정 번호가 표시될 수 있습니다.\n",
                     "example": "07012345678"
                   },
                   "callerIdMode": {
@@ -3530,7 +3530,7 @@
                       "original"
                     ],
                     "default": "account",
-                    "description": "번호 대신 의도로 지정합니다. `original` = 걸려 온 전화의 원 발신자 번호를 대상 단말에 표시합니다(통신사망 직수신 인입에만 성립). 성립하지 않으면 전환을 실패시키지 않고 계정 번호로 표시합니다.\n",
+                    "description": "번호 대신 의도로 지정합니다. `original` = 걸려 온 전화의 발신자 번호를 대상 단말에 표시합니다(통신사망 직수신 인입에만 성립). 성립하지 않으면 전환을 실패시키지 않고 계정 번호로 표시합니다. 받는 쪽 표시만 바뀌는 것이라, 받는 장비에 따라 계정 번호가 표시될 수 있습니다.\n",
                     "example": "original"
                   },
                   "whisper": {
@@ -3634,7 +3634,7 @@
             }
           },
           "403": {
-            "description": "허용되지 않는 전환 — 지정한 `callerId` 가 계정 보유 번호도 원 발신자도 아님 (`code: UNOWNED_CALLER_ID`), 또는 SIP 전환인데 `sip_trunk` 부가서비스 미보유 (`code: SIP_TRUNK_INACTIVE`).\n",
+            "description": "허용되지 않는 전환 — 지정한 `callerId` 가 계정 보유 번호도 걸려 온 통화의 발신자도 아님 (`code: UNOWNED_CALLER_ID`), 또는 SIP 전환인데 `sip_trunk` 부가서비스 미보유 (`code: SIP_TRUNK_INACTIVE`).\n",
             "content": {
               "application/json": {
                 "schema": {
