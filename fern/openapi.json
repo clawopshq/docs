@@ -58,6 +58,10 @@
       "description": "이메일 발신 도메인. 소유한 도메인을 등록하고, 받은 DNS 레코드(CNAME 3건)를 심어 소유를 증명하면 그 도메인으로 발신할 수 있게 됩니다. 등록만으로는 발신되지 않습니다 — DNS 설정 후 검증 API 를 호출해 `verified` 를 확인해야 합니다.\n\n한 도메인은 ClawOps 전체에서 한 계정만 소유합니다. 루트 도메인과 하위 도메인은 별개 리소스이며, `claw-ops.com` 등 ClawOps 가 사용하는 도메인은 등록할 수 없습니다."
     },
     {
+      "name": "Verifications",
+      "description": "본인인증(코드 방식). 인증 한 건을 만들고 코드를 대조합니다 — `생성 → 대조 → 결과` 하나로 끝나며, 코드 생성·만료·시도 제한·한도는 우리가 관리합니다.\n\n**v2 경로입니다.** 계정 ID 가 경로에 없고 API 키가 계정을 정하며, 요청·응답 필드는 모두 camelCase 입니다. 인증 방식(`Authorization: Bearer`)과 에러 모양 (`{ error, code }`)은 v1 과 같습니다.\n\n⚠️ 코드는 어떤 응답에도 실리지 않습니다. 사용자에게 가는 경로는 문자 본문 하나뿐이고 저장도 해시로만 합니다."
+    },
+    {
       "name": "Webhooks",
       "description": "이벤트 기반 Webhook 관리"
     },
@@ -2467,7 +2471,12 @@
                   "From": {
                     "type": "string",
                     "example": "07052358010",
-                    "description": "발신 번호 (계정에 등록된 번호)"
+                    "description": "발신 번호 (계정에 등록된 번호). `CallToken`을 보낼 때는 걸려온 통화의 발신자 번호를 넣습니다 — 받는 쪽에 표시할 번호입니다.\n"
+                  },
+                  "CallToken": {
+                    "type": "string",
+                    "example": "ctk_Q2FsbFRva2VuRXhhbXBsZTAxMjM0NTY3",
+                    "description": "걸려온 통화의 웹훅에서 받은 값. 그 통화의 발신자 번호를 From에 넣으면 받는 쪽에 그 번호가 표시됩니다. 발신번호를 바꿔 새로 거는 것이 아니라 걸려온 전화를 넘기는 착신전환입니다. `Url`과 함께만 사용합니다. [CallToken](/docs/call-token)\n"
                   },
                   "Url": {
                     "type": "string",
@@ -2578,7 +2587,11 @@
                   },
                   "From": {
                     "type": "string",
-                    "description": "발신 번호 (계정에 등록된 번호)"
+                    "description": "발신 번호 (계정에 등록된 번호). `CallToken`을 보낼 때는 걸려온 통화의 발신자 번호를 넣습니다 — 받는 쪽에 표시할 번호입니다.\n"
+                  },
+                  "CallToken": {
+                    "type": "string",
+                    "description": "걸려온 통화의 웹훅에서 받은 값. `Url`과 함께만 사용합니다."
                   },
                   "Url": {
                     "type": "string",
@@ -2639,7 +2652,7 @@
             }
           },
           "400": {
-            "description": "잘못된 요청. 다음 케이스에서 발생:\n  - 필수 파라미터 누락 (To, From)\n  - From 번호 미등록\n  - Url·AgentId·CallFlowId를 동시에 지정\n  - Variables를 CallFlowId 없이 지정하거나 이름·값·크기 규칙 위반\n  - Url 또는 StatusCallback에 내부/사설 주소 지정\n  - To 전화번호 정규화 실패. `code` 필드:\n    - `INVALID_PHONE_NUMBER`: 한국 번호 형식 아님 (포맷 오류, 자릿수 오류, +82-15XX 대표번호 E.164 등)\n    - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
+            "description": "잘못된 요청. 다음 케이스에서 발생:\n  - 필수 파라미터 누락 (To, From)\n  - From 번호 미등록\n  - Url·AgentId·CallFlowId를 동시에 지정\n  - Variables를 CallFlowId 없이 지정하거나 이름·값·크기 규칙 위반\n  - Url 또는 StatusCallback에 내부/사설 주소 지정\n  - CallToken 오류 — `call_token_invalid`(유효하지 않음), `call_token_from_mismatch`(From이 걸려온 통화의 발신자 번호와 다름), `call_token_mode_unsupported`(Url 없이 사용)\n  - To 전화번호 정규화 실패. `code` 필드:\n    - `INVALID_PHONE_NUMBER`: 한국 번호 형식 아님 (포맷 오류, 자릿수 오류, +82-15XX 대표번호 E.164 등)\n    - `UNSUPPORTED_COUNTRY`: 국제 발신 미지원 (+82 외 국가코드)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2659,7 +2672,7 @@
             }
           },
           "403": {
-            "description": "접근 권한 없음 또는 활성 구독 없음",
+            "description": "접근 권한 없음 또는 활성 구독 없음.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2679,7 +2692,7 @@
             }
           },
           "409": {
-            "description": "From 번호에 연결된 Agent가 없습니다 (Url 미지정 시)",
+            "description": "From 번호에 연결된 Agent가 없습니다 (Url 미지정 시). 또는 CallToken의 걸려온 통화가 이미 끊김 (`call_token_expired`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3530,7 +3543,7 @@
                       "original"
                     ],
                     "default": "account",
-                    "description": "번호 대신 의도로 지정합니다. `original` = 걸려 온 전화의 발신자 번호를 대상 단말에 표시합니다(통신사망 직수신 인입에만 성립). 성립하지 않으면 전환을 실패시키지 않고 계정 번호로 표시합니다. 받는 쪽 표시만 바뀌는 것이라, 받는 장비에 따라 계정 번호가 표시될 수 있습니다.\n",
+                    "description": "번호 대신 의도로 지정합니다. `original` = 걸려 온 전화의 발신자 번호를 대상 단말에 표시합니다(통신사망 직수신 인입이고, 그 발신자가 국내 번호인 경우에만 성립). 성립하지 않으면 전환을 실패시키지 않고 계정 번호로 표시합니다. 받는 쪽 표시만 바뀌는 것이라, 받는 장비에 따라 계정 번호가 표시될 수 있습니다.\n",
                     "example": "original"
                   },
                   "whisper": {
@@ -5399,7 +5412,7 @@
             }
           },
           "403": {
-            "description": "접근 권한 없음, 활성 구독 없음, 발송이 제한된 계정, 또는 국외 IP 에서의 문자 발송 (`overseas_ip_blocked`). 문자는 국내에 할당된 IP 대역에서만 보낼 수 있으며, 서울 리전을 포함한 해외 클라우드 대역도 국외로 봅니다. 대체발송이 켜진 알림톡도 문자로 보아 같은 판정을 받습니다 (`Fallback.Disabled` 를 `true` 로 보내면 알림톡만 발송됩니다). 국외 IP 에서 보내려면 해당 IP 가 국외 접속 예외로 승인되어 있어야 합니다. `overseas_ip_blocked` 응답의 `ip` 는 판정한 요청 IP 이며, 클라우드 서버는 이 고정 IP 로 콘솔 「국외 접속 예외」에서 신청합니다.",
+            "description": "접근 권한 없음, 활성 구독 없음, 발송이 제한된 계정, 또는 국외 IP 에서의 문자 발송 (`overseas_ip_blocked`). 문자는 국내 IP 에서만 보낼 수 있습니다. 국내 여부는 IP 위치로 판정하며, 국내 리전(서울 등) 클라우드 서버는 국내로 봅니다. 대체발송이 켜진 알림톡도 문자로 보아 같은 판정을 받습니다 (`Fallback.Disabled` 를 `true` 로 보내면 알림톡만 발송됩니다). 국외 IP 에서 보내려면 해당 IP 가 국외 접속 예외로 승인되어 있어야 합니다. `overseas_ip_blocked` 응답의 `ip` 는 판정한 요청 IP 이며, 해외 서버는 이 고정 IP 로 콘솔 「국외 접속 예외」에서 신청합니다.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5949,7 +5962,10 @@
                         "email.bounced",
                         "email.complained",
                         "email.failed",
-                        "email.received"
+                        "email.received",
+                        "verification.verified",
+                        "verification.failed",
+                        "verification.expired"
                       ]
                     },
                     "description": "구독할 이벤트 목록",
@@ -6119,7 +6135,10 @@
                         "email.bounced",
                         "email.complained",
                         "email.failed",
-                        "email.received"
+                        "email.received",
+                        "verification.verified",
+                        "verification.failed",
+                        "verification.expired"
                       ]
                     }
                   },
@@ -14195,6 +14214,555 @@
           }
         }
       }
+    },
+    "/v2/verifications": {
+      "post": {
+        "operationId": "createVerification",
+        "summary": "인증 시작",
+        "description": "인증 한 건을 만들고 사용자에게 코드를 보냅니다.\n\n**v2 는 경로에 계정 ID 가 없습니다** — 계정은 API 키가 정합니다. 요청·응답 필드는 모두\ncamelCase 입니다.\n\n```json\n{ \"to\": \"01012345678\", \"channel\": \"sms\" }\n```\n\n### 재발송은 같은 요청을 한 번 더 부르는 것입니다\n\n같은 번호로 다시 부르면 **새 건이 생기고 앞 건도 살아 있습니다.** 둘 중 어느 코드로든\n통과하며, 하나가 통과하면 나머지는 자동으로 `canceled` 가 됩니다. 진행 중인 건이 있다고\n거절하지 않습니다 — 문자를 못 받은 사용자가 만료를 기다리는 것 말고 방법이 없어지기\n때문입니다.\n\n제어는 한도가 합니다. 직전 건 생성 후 **60초** 안에 다시 부르면 `429` 이고,\n같은 번호로 시간당 5건·하루 10건·동시 5건까지입니다.\n\n### 코드는 응답에 실리지 않습니다\n\n코드가 사용자에게 가는 경로는 문자 본문 하나뿐이고, 저장도 해시로만 합니다.",
+        "tags": [
+          "Verifications"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "to",
+                  "channel"
+                ],
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "description": "인증 대상 번호. 문자 API 와 같은 정규화 규칙을 씁니다 — 국내 표기와 `+82` E.164 를 모두 받고, 그 밖의 값은 `400 invalid_phone` 입니다.",
+                    "example": "01012345678"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "sms",
+                      "call"
+                    ],
+                    "description": "인증 방식.\n\n- `sms` — 코드를 문자로 보냅니다.\n- `call` — 전화를 걸어 코드를 두 번 읽어 줍니다. 받지 않거나 통화가 실패하면\n  그 건은 `failed` 로 닫히고 **다시 걸지 않습니다.** 미응답은 통화료가\n  붙지 않습니다(과금 원점이 응답 시각입니다).\n\n둘 다 사용자가 듣거나 읽은 코드를 `check` 로 대조합니다 — **호출 방법이\n같습니다.** 계약에는 `sms_inbound`(사용자가 문자를 보냄)·`call_inbound`\n(사용자가 전화를 검)도 정의돼 있으며 순차로 열립니다.",
+                    "example": "sms"
+                  },
+                  "from": {
+                    "type": "string",
+                    "description": "발신에 쓸 **계정 보유 번호**. 생략하면 계정 번호 중 하나를 고릅니다. 계정에 번호가 하나도 없으면 `422 no_number` 이고, 다른 계정의 번호를 주면 `400 from_not_owned` 입니다.",
+                    "example": "07052358010"
+                  },
+                  "codeLength": {
+                    "type": "integer",
+                    "minimum": 4,
+                    "maximum": 8,
+                    "default": 6,
+                    "description": "코드 자릿수. 숫자만 쓰며 앞자리 0 이 올 수 있습니다."
+                  },
+                  "ttlSeconds": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 600,
+                    "default": 180,
+                    "description": "코드 유효 시간(초)."
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "ko"
+                    ],
+                    "default": "ko",
+                    "description": "문자 문안 언어. 지금은 `ko` 하나입니다 — 값을 먼저 열어 두면 `en` 을 넣고도 한국어 문자를 받는 「있는데 안 되는」 상태가 됩니다. 값을 나중에 더하는 것은 하위호환입니다."
+                  },
+                  "templateVariables": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "문안에 채울 값. `서비스명` 을 주면 문자 앞에 `[서비스명]` 으로 붙습니다. 코드는 우리가 채우므로 여기 넣지 않습니다.",
+                    "example": {
+                      "서비스명": "클로옵스"
+                    }
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "같은 계정에서 같은 키로 다시 요청하면 **발송하지 않고** 1회차 결과를 그대로 돌려줍니다. 빈 문자열은 `400` 입니다 — 템플릿에서 빈 값이 들어가 멱등이 조용히 꺼지는 걸 막습니다.",
+                    "example": "signup-1024"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "인증 시작됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청 (`invalid_phone`·`invalid_input`·`from_not_owned`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음, 또는 국외 IP 에서의 문자 발송 (`overseas_ip_blocked`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "계정에 쓸 수 있는 번호가 없음 (`no_number`). 수신형 채널은 번호가 먼저 있어야 합니다.\n\n이미 쓴 `idempotencyKey` 를 **다른 요청**(다른 `to`·`channel`)에 다시 쓰면 `idempotency_key_reused` 입니다 — 그대로 1회차 건을 돌려주면 문자는 안 나갔는데 응답의 `to` 만 옛 번호인 상태를 호출자가 알아챌 방법이 없습니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "한도 초과 또는 쿨다운 중 (`rate_limited`). `Retry-After` 헤더의 초가 지난 뒤 다시 부르세요.",
+            "headers": {
+              "Retry-After": {
+                "description": "다시 시도할 수 있을 때까지 남은 초",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "전달하지 못함 (`send_failed`) — `sms` 는 문자 발송, `call` 은 발신 자체가 실패한 경우입니다. 그 건은 `failed` 로 닫힙니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "그 채널이 이 배포에 열려 있지 않음 (`channel_unavailable`). 그 건은 `failed` 로 닫힙니다. 다른 채널로 다시 부르세요.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listVerifications",
+        "summary": "인증 이력 조회",
+        "description": "계정의 인증 이력을 페이지네이션으로 조회합니다.",
+        "tags": [
+          "Verifications"
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "call"
+              ]
+            },
+            "description": "채널로 거릅니다.",
+            "example": "sms"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "verified",
+                "expired",
+                "max_attempts",
+                "canceled",
+                "failed"
+              ]
+            },
+            "description": "상태로 거릅니다.",
+            "example": "verified"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "인증 대상 번호로 거릅니다.",
+            "example": "01012345678"
+          },
+          {
+            "name": "createdAfter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "이 시각 이후에 만들어진 건만.",
+            "example": "2026-09-18T00:00:00.000Z"
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "이 시각 이전에 만들어진 건만.",
+            "example": "2026-09-19T00:00:00.000Z"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            "description": "0부터 시작합니다.",
+            "example": 0
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": "한 쪽에 담을 건수.",
+            "example": 20
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "인증 이력",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Verification"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "pageSize": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/verifications/{verificationId}": {
+      "get": {
+        "operationId": "getVerification",
+        "summary": "인증 상태 조회",
+        "description": "인증 한 건의 상태를 조회합니다.\n\n만료는 조회 시점에 판정해 반영하므로, `ttlSeconds` 가 지난 건은 이 호출에서 `expired`\n로 바뀝니다.\n\n`pending` 이 아니면 `instruction` 은 `null` 입니다 — 쓸 수 없는 안내를 계속 보여 주지\n않습니다.",
+        "tags": [
+          "Verifications"
+        ],
+        "parameters": [
+          {
+            "name": "verificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "VE1a2b3c4d5e6f7a8b"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "인증 상태",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없거나 다른 계정의 건 (`verification_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelVerification",
+        "summary": "인증 취소",
+        "description": "진행 중인 인증을 취소합니다. **204 가 아니라 200 과 함께 리소스를 돌려줍니다** — 취소 시각이 필요하기 때문입니다. 이미 끝난 건은 `422 already_settled` 입니다.",
+        "tags": [
+          "Verifications"
+        ],
+        "parameters": [
+          {
+            "name": "verificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "VE1a2b3c4d5e6f7a8b"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "취소됨 — `status` 가 `canceled` 로 바뀝니다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Verification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없거나 다른 계정의 건 (`verification_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "이미 끝난 인증 (`already_settled`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/verifications/{verificationId}/check": {
+      "post": {
+        "operationId": "checkVerification",
+        "summary": "코드 대조",
+        "description": "사용자가 입력한 코드를 대조합니다.\n\n### 틀린 코드는 에러가 아닙니다\n\n코드가 맞지 않으면 **`200` 과 함께 `valid:false`, `status:\"pending\"`** 이 오고\n`remainingAttempts` 가 하나 줄어듭니다. 사용자가 오타를 내는 건 정상 동작이지 잘못된\n요청이 아닙니다 — 남은 횟수를 보여 주고 다시 받으면 됩니다.\n\n`4xx` 로 가는 것은 **더 시도해도 소용없는** 경우뿐입니다: 만료(`verification_expired`),\n시도 소진(`max_attempts_reached`), 이미 통과(`already_verified`).\n\n### 통과하면 나머지가 닫힙니다\n\n재발송으로 같은 번호에 여러 건이 살아 있었다면, 하나가 통과하는 순간 나머지는\n`canceled` 가 됩니다. 쓴 코드가 다시 통하면 안 되기 때문입니다.",
+        "tags": [
+          "Verifications"
+        ],
+        "parameters": [
+          {
+            "name": "verificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "VE1a2b3c4d5e6f7a8b"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "사용자가 입력한 코드. 공백과 하이픈은 떼고 비교하므로 `482-913` 도 통합니다.",
+                    "example": "482913"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "대조 결과. `valid` 로 성패를 봅니다 — `false` 여도 200 입니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "verificationId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "verified"
+                      ]
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "remainingAttempts": {
+                      "type": "integer"
+                    },
+                    "verifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 요청 (`invalid_input`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없거나 다른 계정의 건 (`verification_not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "더 시도해도 소용없는 상태 — `verification_expired`·`max_attempts_reached`· `already_verified`. 수신형 채널에 부르면 `check_not_supported` 입니다(대조할 코드를 사용자가 갖고 있지 않습니다 — 결과는 웹훅으로 옵니다).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14646,7 +15214,7 @@
           },
           "ip": {
             "type": "string",
-            "description": "`overseas_ip_blocked` 일 때만 옵니다. 국내에 할당된 IP 대역이 아니라고 판정한 요청 IP 입니다.\nAWS·GCP·Azure 등 클라우드 서버에서 호출한다면 이 값이 그 서버의 공인 IP 이며, 콘솔\n「국외 접속 예외」에서 예외를 신청할 때 이 고정 IP 를 적습니다.",
+            "description": "`overseas_ip_blocked` 일 때만 옵니다. 국외 IP 라고 판정한 요청 IP 입니다.\n해외 리전 클라우드 서버에서 호출한다면 이 값이 그 서버의 공인 IP 이며, 콘솔\n「국외 접속 예외」에서 예외를 신청할 때 이 고정 IP 를 적습니다.",
             "example": "52.79.213.41"
           }
         }
@@ -18603,6 +19171,92 @@
             "type": "integer",
             "description": "PersistentKeepalive(초). NAT 뒤 개시 유지.",
             "example": 25
+          }
+        }
+      },
+      "Verification": {
+        "type": "object",
+        "description": "인증 한 건. **코드는 어떤 응답에도 실리지 않습니다** — 사용자에게 가는 경로는 문자 본문\n하나뿐이고 저장도 해시로만 합니다.",
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "example": "VE1a2b3c4d5e6f7a8b"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "verified",
+              "expired",
+              "max_attempts",
+              "canceled",
+              "failed"
+            ],
+            "description": "- `pending` — 코드를 기다리는 중\n- `verified` — 통과. **1회용입니다** — 같은 건을 두 번 소비할 수 없습니다\n- `expired` — `ttlSeconds` 가 지남\n- `max_attempts` — 대조 5회를 모두 사용\n- `canceled` — 취소했거나, 같은 번호의 다른 건이 먼저 통과함\n- `failed` — 전달 자체가 실패(문자 발송 실패, 통화 미응답·실패)"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "sms",
+              "call"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "example": "01012345678"
+          },
+          "from": {
+            "type": "string",
+            "description": "발신에 쓴 계정 보유 번호.",
+            "example": "07052358010"
+          },
+          "codeLength": {
+            "type": "integer",
+            "example": 6
+          },
+          "remainingAttempts": {
+            "type": "integer",
+            "description": "남은 대조 횟수. 건당 5회에서 시작합니다.",
+            "example": 5
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "instruction": {
+            "type": "object",
+            "nullable": true,
+            "description": "사용자에게 **그대로 보여 줘야 하는 것**. 발신형(`sms`·`call`)은 우리가 사용자에게 코드를 전달하므로 `null` 입니다. 수신형 채널이 열리면 보낼 번호와 문구가 여기 담깁니다.",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "sendTo": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "callTo": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "deadline": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
           }
         }
       }
