@@ -16042,6 +16042,12 @@
             ],
             "description": "AMD(MachineDetection) 결과. MachineDetection 을 켠 발신 통화에만 값이 있으며,\n사람 응답=human, 자동응답기/음성사서함=machine, 판정 불가=unknown. 미사용 시 null.\n"
           },
+          "callerIdRestricted": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "수신 통화에서 발신자가 번호 표시제한(`*23#` 등)을 걸고 건 통화면 true, 아니면 false.\n번호는 `from` 에 그대로 전달됩니다. 통신사가 표시제한 여부를 보내지 않는 경로로 들어온\n통화는 false 로 올 수 있습니다. 발신 통화와 2026-09-29 이전의 수신 통화는 null.\n",
+            "example": false
+          },
           "recordingUrl": {
             "type": "string",
             "nullable": true,
