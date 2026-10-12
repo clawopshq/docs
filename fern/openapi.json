@@ -75,7 +75,11 @@
     },
     {
       "name": "BlockedRecipients",
-      "description": "수신거부(DNC) 명단. 광고 문자 하단의 080 무료수신거부, ARS의 \"수신거부 9번\", 상담 중 구두 요청 등으로 접수된 번호를 계정 단위로 관리합니다. 전화와 문자는 각각 따로 차단하고, 해제해도 항목은 이력으로 남습니다. 대상은 이 계정의 **발신**(전화·문자)이며 착신은 대상이 아닙니다.\n\n등록하면 **발신이 실제로 막힙니다.** 통화 생성·메시지 발송이 발신 직전에 이 명단을 조회해 `422 recipient_blocked` 로 거절하며, 배치 발신(캠페인)도 같은 관문을 지나므로 해당 대상은 자동으로 건너뜁니다. 막힌 통화는 통화기록에 `hangup_cause=recipient_blocked` 로 남습니다."
+      "description": "수신거부(DNC) 명단. 광고 문자 하단의 080 무료수신거부, ARS의 \"수신거부 9번\", 상담 중 구두 요청 등으로 접수된 번호를 계정 단위로 관리합니다. 전화와 문자는 각각 따로 차단하고, 해제해도 항목은 이력으로 남습니다. 대상은 이 계정의 **발신**(전화·문자)이며 착신은 대상이 아닙니다.\n\n등록하면 **발신이 실제로 막힙니다.** 통화 생성·메시지 발송이 발신 직전에 이 명단을 조회해 `422 recipient_blocked` 로 거절하며, 배치 발신(캠페인)도 같은 관문을 지나므로 해당 대상은 자동으로 건너뜁니다. 막힌 통화는 통화기록에 `hangup_cause=recipient_blocked` 로 남습니다.\n\n수신 통화를 막으려면 BlockedCallers(수신 통화 차단)를 사용하세요."
+    },
+    {
+      "name": "BlockedCallers",
+      "description": "수신 통화 차단. 등록한 번호에서 이 계정의 번호로 걸려 오는 **수신 통화**를 받지 않고 거절합니다. 계정 단위 목록이며 번호는 완전 일치로만 대조합니다. 해제해도 항목은 이력으로 남습니다. 발신은 막지 않습니다 — 발신을 막는 명단은 BlockedRecipients(수신거부)입니다.\n\n거절된 통화는 통화 기록에 `status=rejected`, `hangupCause=caller_blocked` 로 남고, 수신 통화 statusCallback 이 설정돼 있으면 `CallStatus=rejected` 종료 통지가 한 번 갑니다. 번호 표시제한 통화는 이 목록이 아니라 번호 설정의 `rejectCallerIdRestricted` 로 거절합니다(`hangupCause=caller_id_restricted_rejected`)."
     },
     {
       "name": "CallFlows",
@@ -2491,15 +2495,13 @@
                   "CallContext": {
                     "type": "object",
                     "additionalProperties": false,
-                    "description": "AgentId 에이전트의 이번 통화에만 적용되는 컨텍스트.",
-                    "required": [
-                      "Instruction"
-                    ],
+                    "description": "AgentId 에이전트의 이번 통화에만 적용되는 컨텍스트. `Instruction`·`Variables` 중 하나는 있어야 합니다(둘 다 비면 400).\n",
+                    "minProperties": 1,
                     "properties": {
                       "Instruction": {
                         "type": "string",
                         "maxLength": 4000,
-                        "description": "이번 통화에서 수행할 실행 요구사항."
+                        "description": "이번 통화에서 수행할 실행 요구사항. 데이터만 넘길 때는 생략합니다."
                       },
                       "Variables": {
                         "type": "object",
@@ -3952,7 +3954,7 @@
       "post": {
         "operationId": "requestTranscript",
         "summary": "통화 전사 명시 요청",
-        "description": "조직 설정 \"통화 받아쓰기\"가 꺼져 있어도 특정 통화 1 건에 한해 전사를 실행합니다. Request body 없음.\n\n**실패한 전사는 재요청할 수 있습니다.** 접수되면 202 와 함께 대기열에 등록되며, 고객 요청 건이라 내부 처리보다 먼저 실행됩니다. 이미 제공됐거나(completed) 처리 중인(pending) 통화만 409 를 반환합니다.\n\n전사된 오디오 길이만큼 사용량 기반으로 과금됩니다. 다만 이미 전사가 끝난 통화를 요청한 경우에는 재전사 없이 결과만 제공되므로 **추가 과금이 발생하지 않습니다.**",
+        "description": "조직 설정 \"통화 받아쓰기\"가 꺼져 있어도 특정 통화 1 건에 한해 전사를 실행합니다. Request body 없음.\n\n**실패한 전사는 재요청할 수 있습니다.** 접수되면 202 와 함께 대기열에 등록되며, 고객 요청 건이라 내부 처리보다 먼저 실행됩니다. 이미 제공됐거나(completed) 전사 요청이 처리 중인(pending) 통화만 409 를 반환합니다. \"통화 받아쓰기\"가 꺼진 계정에서 통화 종료 직후 요청해도 202 로 접수됩니다.\n\n전사된 오디오 길이만큼 사용량 기반으로 과금됩니다. 다만 이미 전사가 끝난 통화를 요청한 경우에는 재전사 없이 결과만 제공되므로 **추가 과금이 발생하지 않습니다.**",
         "tags": [
           "Calls"
         ],
@@ -4939,6 +4941,17 @@
                     "type": "string",
                     "nullable": true,
                     "description": "받아쓰기 사전 부착. 같은 계정 소유 사전 id 를 지정하면 이 번호로 걸려온 통화 전사에 해당 사전을 대체 적용(병합 아님). null 전송 시 부착 해제(계정 기본 사전 폴백). 미포함 시 변경 없음."
+                  },
+                  "friendlyName": {
+                    "type": "string",
+                    "nullable": true,
+                    "example": "고객센터 대표",
+                    "description": "번호 별칭(용도 메모). 앞뒤 공백은 지워 저장하며 최대 50자, 줄바꿈 등 제어문자는 쓸 수 없습니다. null 또는 빈 문자열을 보내면 별칭을 지웁니다. 미포함 시 변경 없음. 라우팅에는 영향이 없습니다."
+                  },
+                  "rejectCallerIdRestricted": {
+                    "type": "boolean",
+                    "example": true,
+                    "description": "true 면 이 번호로 걸려 오는 번호 표시제한 수신 통화를 받지 않고 거절합니다. 거절된 통화는 통화 기록에 `status=rejected`, `hangupCause=caller_id_restricted_rejected` 로 남습니다. routingType 과 무관하게 적용되며 미포함 시 변경 없음. 통신사가 표시제한 여부를 보내지 않는 경로에서는 거절되지 않을 수 있습니다. 특정 번호의 수신 통화를 막으려면 수신 통화 차단(`POST /v1/accounts/{accountId}/blocked-callers`)을 사용하세요."
                   }
                 }
               }
@@ -4957,7 +4970,7 @@
             }
           },
           "400": {
-            "description": "잘못된 요청 — 수정할 필드 없음 / webhookMethod 부적합 / routingType 부적합 / routingType=sip 인데 sipEndpointId 없음 / 엔드포인트 소유권 없음 / routingType=softphone 인데 sipCredentialId 없음 / credential 소유권 없음(VALIDATION, INVALID_ENDPOINT, INVALID_CREDENTIAL)",
+            "description": "잘못된 요청 — 수정할 필드 없음 / webhookMethod 부적합 / routingType 부적합 / routingType=sip 인데 sipEndpointId 없음 / 엔드포인트 소유권 없음 / routingType=softphone 인데 sipCredentialId 없음 / credential 소유권 없음 / 별칭이 50자 초과이거나 제어문자 포함 / rejectCallerIdRestricted 가 불리언이 아님(VALIDATION, INVALID_ENDPOINT, INVALID_CREDENTIAL, invalid_friendly_name)",
             "content": {
               "application/json": {
                 "schema": {
@@ -7428,7 +7441,7 @@
       "post": {
         "operationId": "createCallBatch",
         "summary": "배치 발신(캠페인) 생성",
-        "description": "명단에 자동으로 전화를 거는 배치를 만듭니다. 생성 즉시 반환되며, 실제 발신은\n동시 통화 한도·분당 발신 속도·발신 가능 시간대를 지켜가며 순차적으로 진행됩니다.\n\n**대상은 `CallFlowId` · `AgentId` · `Url` 중 정확히 하나**를 지정합니다 (발신 API와 동일).\n\n수신자별로 다른 값을 쓰려면 `Tasks[].Variables`에 넣습니다. 콜 플로우에서\n`{{변수명}}`으로 참조합니다. 변수 **이름**은 영문/숫자/밑줄만 가능합니다(값은 한글 가능).\n\n**발신 차수(`Rounds`)**: 몇 번 걸지, 얼마 간격으로 걸지, **각 차수를 언제 걸지**를\n한 배열로 정합니다. 배열 인덱스가 곧 차수라 `Rounds[0]`이 1차 발신이고 그 뒤가 재시도입니다.\n차수마다 시간대를 따로 줄 수 있어 \"1차는 낮에, 안 받으면 2·3차는 저녁에\" 같은 진행이 됩니다.\n\n**발신 가능 시간대**: 광고성 전화는 21시~익일 8시 발신이 법으로 금지되어 있어\n이 시간에는 `Rounds[].Windows` 설정과 무관하게 발신되지 않습니다. `Windows`는 그보다\n**더 좁게** 제한할 때 사용합니다.\n\n배치 발신은 계정별로 활성화가 필요합니다.",
+        "description": "명단에 자동으로 전화를 거는 배치를 만듭니다. 생성 즉시 반환되며, 실제 발신은\n동시 통화 한도·분당 발신 속도·발신 가능 시간대를 지켜가며 순차적으로 진행됩니다.\n\n**대상은 `CallFlowId` · `AgentId` · `Url` 중 정확히 하나**를 지정합니다 (발신 API와 동일).\n\n수신자별로 다른 값을 쓰려면 `Tasks[].Variables`에 넣습니다. 변수 **이름**은\n영문/숫자/밑줄만 가능합니다(값은 한글 가능). 대상에 따라 쓰이는 방식이 다릅니다.\n- **콜 플로우**: 멘트에서 `{{변수명}}`으로 참조합니다.\n- **매니지드 에이전트**: 그 통화의 `CallContext.Variables`로 전달되어 에이전트 지시문 뒤에\n  이번 통화의 데이터로 붙습니다. 에이전트 지시문에는 `{{변수명}}` 치환이 없으므로\n  「데이터의 `customer_name`으로 부르세요」처럼 변수 이름으로 가리킵니다.\n\n**발신 차수(`Rounds`)**: 몇 번 걸지, 얼마 간격으로 걸지, **각 차수를 언제 걸지**를\n한 배열로 정합니다. 배열 인덱스가 곧 차수라 `Rounds[0]`이 1차 발신이고 그 뒤가 재시도입니다.\n차수마다 시간대를 따로 줄 수 있어 \"1차는 낮에, 안 받으면 2·3차는 저녁에\" 같은 진행이 됩니다.\n\n**발신 가능 시간대**: 광고성 전화는 21시~익일 8시 발신이 법으로 금지되어 있어\n이 시간에는 `Rounds[].Windows` 설정과 무관하게 발신되지 않습니다. `Windows`는 그보다\n**더 좁게** 제한할 때 사용합니다.\n\n배치 발신은 계정별로 활성화가 필요합니다.",
         "tags": [
           "CallBatches"
         ],
@@ -7577,7 +7590,7 @@
                         },
                         "Variables": {
                           "type": "object",
-                          "description": "이 수신자에게만 적용할 콜 플로우 변수. 이름은 영문/숫자/밑줄.",
+                          "description": "이 수신자에게만 적용할 변수. 콜 플로우는 `{{변수명}}` 치환, 매니지드 에이전트는 통화 데이터(`CallContext.Variables`)로 전달. 이름은 영문/숫자/밑줄.",
                           "additionalProperties": true,
                           "example": {
                             "customer_name": "홍길동",
@@ -11346,6 +11359,526 @@
         }
       }
     },
+    "/v1/accounts/{accountId}/blocked-callers": {
+      "get": {
+        "operationId": "listBlockedCallers",
+        "summary": "수신 통화 차단 목록 조회",
+        "description": "계정의 수신 통화 차단 목록을 조회합니다. 기본은 **현재 차단 중인 항목만** 반환하며,\n해제된 이력까지 보려면 `status` 를 released 또는 all 로 지정합니다.\n\n`number` 필터는 정규화 후 대조하므로 `010-1234-5678` 로도 검색됩니다.",
+        "tags": [
+          "BlockedCallers"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "번호 필터(정확 일치). 정규화 후 대조하므로 하이픈·+82 표기로도 찾힙니다.",
+            "example": "010-1234-5678"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "released",
+                "all"
+              ],
+              "default": "active"
+            },
+            "description": "active=차단 중(기본), released=해제된 이력, all=전체",
+            "example": "active"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "description": "페이지 번호(0-based)",
+            "example": 0
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            },
+            "description": "페이지 크기(최대 100)",
+            "example": 20
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 50
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "deprecated": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 100
+            },
+            "description": "`pageSize` 의 별칭(하위호환). 신규 연동은 `pageSize` 를 사용하세요.",
+            "example": 100
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "수신 통화 차단 목록",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCallerListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBlockedCaller",
+        "summary": "수신 통화 차단 등록",
+        "description": "번호를 수신 통화 차단 목록에 등록합니다. 등록 즉시 그 번호에서 이 계정의 모든 번호로 걸려 오는\n**수신 통화가 받지 않고 거절됩니다.** 거절된 통화는 통화 기록에 `status=rejected`,\n`hangupCause=caller_blocked` 로 남습니다.\n\n대상은 **수신 통화**뿐입니다. 이 계정에서 그 번호로 거는 발신은 막지 않습니다 — 발신을 막으려면\n[수신거부 등록](#tag/BlockedRecipients)을 사용하세요.\n\n번호 표시제한 통화(발신 번호가 없는 통화)는 이 목록으로 막을 수 없습니다. 번호 설정\n([번호 설정 수정](#operation/updateNumber))의 `rejectCallerIdRestricted` 를 켜세요.\n\n**멱등입니다.** 이미 차단 중인 번호를 다시 등록하면 에러 없이 기존 항목을 `200` 으로 돌려줍니다.\n새로 등록된 경우에만 `201` 입니다.\n\n차단 중인 항목은 계정당 10,000건까지 등록할 수 있습니다. 넘으면 `422 blocked_caller_limit_exceeded` 입니다.",
+        "tags": [
+          "BlockedCallers"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "number"
+                ],
+                "properties": {
+                  "number": {
+                    "type": "string",
+                    "description": "차단할 발신 번호. 국내 번호만 받으며 하이픈·+82 모두 허용합니다(국내 표기로 정규화되어 저장). `anonymous` 처럼 번호가 아닌 값은 400 입니다.",
+                    "example": "010-1234-5678"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "자유 메모",
+                    "example": "반복 영업 전화"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "이미 차단 중 — 기존 항목을 그대로 반환(멱등)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCaller"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "수신 통화 차단 등록 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCaller"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION) — 번호 형식 오류, 번호가 아닌 값(anonymous 등), 국외 번호",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "차단 중인 항목이 계정 상한(10,000건)에 닿음 (blocked_caller_limit_exceeded). 필요 없는 항목을 해제한 뒤 다시 등록하세요.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{accountId}/blocked-callers/{blockedCallerId}": {
+      "get": {
+        "operationId": "getBlockedCaller",
+        "summary": "수신 통화 차단 항목 조회",
+        "description": "수신 통화 차단 항목 하나의 상세를 조회합니다. 해제된 항목도 이력으로 남아 있어 조회되며, 이때 active 는 false 입니다.",
+        "tags": [
+          "BlockedCallers"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockedCallerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신 통화 차단 항목 id",
+            "example": "clx9bcl00001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "수신 통화 차단 항목 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCaller"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateBlockedCaller",
+        "summary": "수신 통화 차단 메모 수정",
+        "description": "수신 통화 차단 항목의 메모를 수정합니다.\n\n번호는 변경할 수 없습니다. 번호가 잘못 등록됐다면 해제(DELETE)한 뒤 올바른 번호로 새로 등록하세요.",
+        "tags": [
+          "BlockedCallers"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockedCallerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신 통화 차단 항목 id",
+            "example": "clx9bcl00001"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true,
+                    "description": "변경할 메모. null 또는 빈 문자열이면 메모를 지웁니다. 미포함 시 변경 없음.",
+                    "example": "영업 전화 반복 확인"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCaller"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "releaseBlockedCaller",
+        "summary": "수신 통화 차단 해제",
+        "description": "수신 통화 차단을 해제해 그 번호의 수신 통화를 다시 받습니다.\n\n**항목은 삭제되지 않습니다.** `unblockedAt` 이 기록되고 `active` 가 false 가 될 뿐, 행은 이력으로 남습니다.\n해제된 항목은 `status=released` 또는 `all` 로 조회합니다.\n\n이미 해제된 항목에 다시 호출해도 성공(200)이며, 최초 해제 시각은 덮어쓰지 않습니다.",
+        "tags": [
+          "BlockedCallers"
+        ],
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "계정 ID",
+            "example": "AC1a2b3c4d"
+          },
+          {
+            "name": "blockedCallerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "수신 통화 차단 항목 id",
+            "example": "clx9bcl00001"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "해제 사유 메모",
+                    "example": "거래처 번호로 확인됨"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "해제 성공 — 해제 정보가 채워진 항목을 반환",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockedCaller"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력 검증 실패 (VALIDATION)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "접근 권한 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "항목을 찾을 수 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/accounts/{accountId}/dictionaries": {
       "get": {
         "operationId": "listDictionaries",
@@ -14243,9 +14776,10 @@
                     "type": "string",
                     "enum": [
                       "sms",
-                      "call"
+                      "call",
+                      "sms_inbound"
                     ],
-                    "description": "인증 방식.\n\n- `sms` — 코드를 문자로 보냅니다.\n- `call` — 전화를 걸어 코드를 두 번 읽어 줍니다. 받지 않거나 통화가 실패하면\n  그 건은 `failed` 로 닫히고 **다시 걸지 않습니다.** 미응답은 통화료가\n  붙지 않습니다(과금 원점이 응답 시각입니다).\n\n둘 다 사용자가 듣거나 읽은 코드를 `check` 로 대조합니다 — **호출 방법이\n같습니다.** 계약에는 `sms_inbound`(사용자가 문자를 보냄)·`call_inbound`\n(사용자가 전화를 검)도 정의돼 있으며 순차로 열립니다.",
+                    "description": "인증 방식.\n\n- `sms` — 코드를 문자로 보냅니다.\n- `call` — 전화를 걸어 코드를 두 번 읽어 줍니다. 받지 않거나 통화가 실패하면\n  그 건은 `failed` 로 닫히고 **다시 걸지 않습니다.** 미응답은 통화료가\n  붙지 않습니다(과금 원점이 응답 시각입니다).\n- `sms_inbound` — **사용자가 우리에게 문자를 보냅니다.** 응답의 `instruction`\n  을 화면에 띄우면 됩니다. 사용자가 입력할 것이 없으므로 `check` 를 부르지\n  않고 결과는 `verification.verified` 웹훅으로 받습니다. **추가 요금이 없습니다.**\n\n발신형 둘은 사용자가 듣거나 읽은 코드를 `check` 로 대조합니다 — **호출 방법이\n같습니다.** 계약에는 `call_inbound`(사용자가 전화를 검)도 정의돼 있으며\n순차로 열립니다.\n\n⚠️ 수신형은 **우리가 배정한 번호**로만 됩니다. 밖에서 가져온 번호는 수신\n문자가 우리에게 들어오지 않습니다.",
                     "example": "sms"
                   },
                   "from": {
@@ -14328,7 +14862,7 @@
             }
           },
           "403": {
-            "description": "접근 권한 없음, 또는 국외 IP 에서의 문자 발송 (`overseas_ip_blocked`)",
+            "description": "접근 권한 없음, 국외 IP 에서의 문자 발송 (`overseas_ip_blocked`), 또는 활성 구독 없음 (`no_active_subscription`).\n\n수신형(`sms_inbound`)은 추가 요금이 없지만 **구독은 있어야 합니다.**",
             "content": {
               "application/json": {
                 "schema": {
@@ -14402,7 +14936,8 @@
               "type": "string",
               "enum": [
                 "sms",
-                "call"
+                "call",
+                "sms_inbound"
               ]
             },
             "description": "채널로 거릅니다.",
@@ -15273,12 +15808,14 @@
           "temperature": {
             "type": "number",
             "minimum": 0,
-            "maximum": 2
+            "maximum": 2,
+            "description": "gpt-5 · gpt-5-mini · gpt-5-nano 에서는 지원하지 않습니다(400)."
           },
           "top_p": {
             "type": "number",
             "minimum": 0,
-            "maximum": 1
+            "maximum": 1,
+            "description": "gpt-5 · gpt-5-mini · gpt-5-nano 에서는 지원하지 않습니다(400)."
           },
           "verbosity": {
             "type": "string",
@@ -15286,7 +15823,8 @@
               "low",
               "medium",
               "high"
-            ]
+            ],
+            "description": "GPT-5 계열 전용입니다. gpt-4.1 · gpt-4o 계열에서는 지원하지 않습니다(400)."
           },
           "max_completion_tokens": {
             "type": "integer",
@@ -15295,12 +15833,14 @@
           "frequency_penalty": {
             "type": "number",
             "minimum": -2,
-            "maximum": 2
+            "maximum": 2,
+            "description": "gpt-5 · gpt-5-mini · gpt-5-nano · gpt-5.6-luna 에서는 지원하지 않습니다(400)."
           },
           "presence_penalty": {
             "type": "number",
             "minimum": -2,
-            "maximum": 2
+            "maximum": 2,
+            "description": "gpt-5 · gpt-5-mini · gpt-5-nano · gpt-5.6-luna 에서는 지원하지 않습니다(400)."
           },
           "service_tier": {
             "type": "string",
@@ -15308,9 +15848,9 @@
               "auto",
               "default",
               "flex",
-              "scale",
               "priority"
-            ]
+            ],
+            "description": "처리 티어. `flex` 는 gpt-4.1·gpt-4o 계열에서 지원하지 않습니다(400)."
           },
           "parallel_tool_calls": {
             "type": "boolean"
@@ -16057,7 +16597,7 @@
           "hangupCause": {
             "type": "string",
             "nullable": true,
-            "description": "통화 종료 사유. `status` 가 왜 그렇게 끝났는지를 구분합니다. 종료 전이거나 사유\n미상이면 null.\n\n네 갈래로 나뉩니다 — 번호 자체가 문제라 재시도해도 소용없는 것(`invalid_number` 등),\n일시적이라 재시도 가치가 있는 것(`no_answer`·`user_busy` 등), 번호가 아니라 **계정**\n문제인 것(`concurrency_limit_exceeded`·`subscription_inactive` 등), ClawOps 측 오류\n(`app_error`·`call_stuck`).\n\n**종료 사유로 통화를 필터링하려면 [Calls API](/api-reference/claw-ops-api/calls/list-calls)를 참고하세요.**\n여기 값을 나열하지 않는 이유: 사유가 늘 때마다 spec·문서·대시보드가 각각 갱신돼야 하는데\n한 곳만 빠지면 조용히 어긋난다(실제로 그렇게 어긋난 적이 있다).\n",
+            "description": "통화 종료 사유. `status` 가 왜 그렇게 끝났는지를 구분합니다. 종료 전이거나 사유\n미상이면 null.\n\n네 갈래로 나뉩니다 — 번호 자체가 문제라 재시도해도 소용없는 것(`invalid_number` 등),\n일시적이라 재시도 가치가 있는 것(`no_answer`·`user_busy` 등), 번호가 아니라 **계정**\n문제인 것(`concurrency_limit_exceeded`·`subscription_inactive` 등), ClawOps 측 오류\n(`app_error`·`call_stuck`).\n\n고객 설정이 받지 않고 거절한 수신 통화는 따로 갈립니다 — 수신 통화 차단 목록에 있는 번호\n(`caller_blocked`), 번호 표시제한 통화 거절 설정(`caller_id_restricted_rejected`). 둘 다\n`status=rejected` 이며 재시도 대상이 아닙니다.\n\n**종료 사유로 통화를 필터링하려면 [Calls API](/api-reference/claw-ops-api/calls/list-calls)를 참고하세요.**\n여기 값을 나열하지 않는 이유: 사유가 늘 때마다 spec·문서·대시보드가 각각 갱신돼야 하는데\n한 곳만 빠지면 조용히 어긋난다(실제로 그렇게 어긋난 적이 있다).\n",
             "example": "invalid_number"
           },
           "hangupCauseQ850": {
@@ -16069,7 +16609,7 @@
           "sipResponseCode": {
             "type": "integer",
             "nullable": true,
-            "description": "종료를 유발한 SIP 응답코드 (404=없는 번호, 486=통화중, 500=망 오류 등). 응답코드 없이 끝났으면 null.",
+            "description": "종료를 유발한 SIP 응답코드 (404=없는 번호, 486=통화중, 500=망 오류 등). 수신 통화를 받지 않고 거절했으면 ClawOps 가 보낸 응답(403=거절, 486=통화중)입니다. 응답코드 없이 끝났으면 null.",
             "example": 404
           },
           "hangupSource": {
@@ -16083,7 +16623,7 @@
               "system",
               null
             ],
-            "description": "종료 책임 주체. carrier(통신망) / callee(수신자) / caller(발신자) /\napp·system(ClawOps 측 오류 — 이 경우 재시도를 권장합니다).\n",
+            "description": "종료 책임 주체. carrier(통신망) / callee(수신 측) / caller(발신 측) /\napp·system(ClawOps 측 — 이 경우 재시도를 권장합니다). 통화 후 정상 종료에서는\n먼저 끊은 쪽의 역할입니다: 착신 통화에서 상대가 끊으면 caller, 여러분의 앱이\n끊으면 callee(발신 통화는 그 반대). 판정하지 못하면 null.\n",
             "example": "carrier"
           },
           "transferTo": {
@@ -16418,6 +16958,18 @@
             "nullable": true,
             "example": null,
             "description": "부착된 받아쓰기 사전 id. null 이면 이 번호로 걸려온 통화 전사에 계정 기본 사전을 사용."
+          },
+          "friendlyName": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 50,
+            "example": "고객센터 대표",
+            "description": "번호마다 적어 두는 용도 메모(별칭). null 이면 별칭 없음. 발신 표시·라우팅에는 쓰이지 않습니다."
+          },
+          "rejectCallerIdRestricted": {
+            "type": "boolean",
+            "example": false,
+            "description": "번호 표시제한 수신 통화를 받지 않고 거절하는지 여부. 기본 false."
           },
           "createdAt": {
             "type": "string",
@@ -18597,6 +19149,103 @@
           }
         }
       },
+      "BlockedCaller": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "clx9bcl00001",
+            "description": "수신 통화 차단 항목 id"
+          },
+          "number": {
+            "type": "string",
+            "example": "01012345678",
+            "description": "차단한 발신 번호. 하이픈·+82 로 보내도 국내 표기로 정규화되어 저장됩니다. 이 번호에서 걸려 온 수신 통화는 받지 않고 거절됩니다."
+          },
+          "active": {
+            "type": "boolean",
+            "example": true,
+            "description": "지금 차단 중인지 여부. 해제된 항목도 이력으로 남아 조회되므로 이 값으로 구분합니다."
+          },
+          "source": {
+            "type": "string",
+            "example": "api",
+            "description": "등록 경로. console=콘솔, api=REST API, mcp=MCP 도구."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "반복 영업 전화",
+            "description": "자유 메모"
+          },
+          "createdBy": {
+            "type": "string",
+            "nullable": true,
+            "example": null,
+            "description": "등록 주체(콘솔 사용자 등). API 키로 등록하면 null 입니다."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "차단 등록 시각"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unblockedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "해제 시각. null 이면 차단 중입니다. 해제해도 항목은 삭제되지 않고 이력으로 남습니다."
+          },
+          "unblockedSource": {
+            "type": "string",
+            "nullable": true,
+            "example": "api",
+            "description": "해제 경로(source 와 같은 값 집합)"
+          },
+          "unblockedBy": {
+            "type": "string",
+            "nullable": true,
+            "description": "해제 주체. API 키로 해제하면 null 입니다."
+          },
+          "unblockedNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "해제 사유 메모"
+          }
+        }
+      },
+      "BlockedCallerListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "수신 통화 차단 항목 목록. 최근 등록순.",
+            "items": {
+              "$ref": "#/components/schemas/BlockedCaller"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer",
+                "description": "현재 페이지(0-based)"
+              },
+              "pageSize": {
+                "type": "integer",
+                "description": "페이지 크기"
+              },
+              "total": {
+                "type": "integer",
+                "description": "필터에 해당하는 전체 건수"
+              }
+            }
+          }
+        }
+      },
       "Dictionary": {
         "type": "object",
         "properties": {
@@ -19204,7 +19853,8 @@
             "type": "string",
             "enum": [
               "sms",
-              "call"
+              "call",
+              "sms_inbound"
             ]
           },
           "to": {
@@ -19241,7 +19891,7 @@
           "instruction": {
             "type": "object",
             "nullable": true,
-            "description": "사용자에게 **그대로 보여 줘야 하는 것**. 발신형(`sms`·`call`)은 우리가 사용자에게 코드를 전달하므로 `null` 입니다. 수신형 채널이 열리면 보낼 번호와 문구가 여기 담깁니다.",
+            "description": "사용자에게 **그대로 보여 줘야 하는 것**. 발신형(`sms`·`call`)은 우리가 사용자에게 코드를 전달하므로 `null` 입니다.\n수신형(`sms_inbound`)은 `pending` 인 동안만 채워집니다 — `sendTo` 로 `body` 를 보내라고 화면에 띄우면 됩니다. 건이 끝나면 `null` 이 됩니다.",
             "properties": {
               "type": {
                 "type": "string"
