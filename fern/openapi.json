@@ -17616,7 +17616,7 @@
       },
       "CallFlowVoice": {
         "type": "object",
-        "description": "플로우 전역 음성. 이 플로우의 모든 멘트를 이 목소리가 읽습니다. 생략하면 기본(무료) 음성입니다.\n`google`은 무료이고 `cartesia`·`elevenlabs`는 유료입니다. 다른 조직이 등록한 복제 음성 id는 403(`call_flow_voice_forbidden`)으로 거절합니다.",
+        "description": "플로우 전역 음성. 이 플로우의 모든 멘트를 이 목소리가 읽습니다. 생략하면 기본(무료) 음성입니다.\n`clawops`(ClawOps 기본 음성)는 무료이고 `cartesia`·`elevenlabs`는 유료입니다. 다른 조직이 등록한 복제 음성 id는 403(`call_flow_voice_forbidden`)으로 거절합니다.",
         "required": [
           "provider"
         ],
@@ -17624,12 +17624,12 @@
           "provider": {
             "type": "string",
             "enum": [
-              "google",
+              "clawops",
               "cartesia",
               "elevenlabs"
             ],
             "description": "TTS 공급자",
-            "example": "google"
+            "example": "clawops"
           },
           "voiceId": {
             "type": "string",
@@ -17662,7 +17662,7 @@
           }
         },
         "example": {
-          "provider": "google",
+          "provider": "clawops",
           "language": "ko"
         }
       },
@@ -17753,7 +17753,7 @@
           "version": 1,
           "start": "greeting",
           "voice": {
-            "provider": "google",
+            "provider": "clawops",
             "language": "ko"
           },
           "nodes": {
