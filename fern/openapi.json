@@ -3318,7 +3318,7 @@
                   },
                   "voice": {
                     "type": "string",
-                    "description": "`text` 를 읽을 음성. VoiceML `<Say>` 의 `voice` 와 같은 형식입니다 — 생략하면 무료 기본 음성으로 읽고(요금 없음), `cartesia` 또는 `cartesia:<음성 ID>` 를 지정하면 고품질 음성으로 읽으며 읽은 글자 수만큼 과금됩니다. 통화 중 다른 안내와 음색을 맞추려면 `<Say>` 에 쓴 값과 같은 값을 주세요.\n",
+                    "description": "`text` 를 읽을 음성. VoiceML `<Say>` 의 `voice` 와 같은 형식입니다 — 생략하면 무료 기본 음성으로 읽고(요금 없음), `cartesia`·`cartesia:<음성 ID>`· `google:<음성명>` 을 지정하면 고품질 음성으로 읽으며 읽은 글자 수만큼 과금됩니다. 통화 중 다른 안내와 음색을 맞추려면 `<Say>` 에 쓴 값과 같은 값을 주세요.\n",
                     "example": "cartesia:4dd4630e-19e0-4243-bca0-676ff85119b7"
                   },
                   "target": {
@@ -3555,7 +3555,7 @@
                   },
                   "whisperVoice": {
                     "type": "string",
-                    "description": "`whisper` 를 읽을 음성. VoiceML `<Say>` 의 `voice` 와 같은 형식입니다 — 생략하면 무료 기본 음성, `cartesia:<음성 ID>` 를 지정하면 고품질 음성으로 읽고 읽은 글자 수만큼 과금됩니다.\n",
+                    "description": "`whisper` 를 읽을 음성. VoiceML `<Say>` 의 `voice` 와 같은 형식입니다 — 생략하면 무료 기본 음성, `cartesia:<음성 ID>`·`google:<음성명>` 을 지정하면 고품질 음성으로 읽고 읽은 글자 수만큼 과금됩니다.\n",
                     "example": "cartesia:4dd4630e-19e0-4243-bca0-676ff85119b7"
                   },
                   "holdMedia": {
@@ -3571,7 +3571,7 @@
                   },
                   "failureVoice": {
                     "type": "string",
-                    "description": "`failureMessage` 를 읽을 음성. `whisperVoice` 와 같은 형식입니다 — 생략하면 무료 기본 음성, `cartesia:<음성 ID>` 를 지정하면 고품질 음성으로 읽고 읽은 글자 수만큼 과금됩니다.\n",
+                    "description": "`failureMessage` 를 읽을 음성. `whisperVoice` 와 같은 형식입니다 — 생략하면 무료 기본 음성, `cartesia:<음성 ID>`·`google:<음성명>` 을 지정하면 고품질 음성으로 읽고 읽은 글자 수만큼 과금됩니다.\n",
                     "example": "cartesia:4dd4630e-19e0-4243-bca0-676ff85119b7"
                   },
                   "timeout": {
@@ -17616,7 +17616,7 @@
       },
       "CallFlowVoice": {
         "type": "object",
-        "description": "플로우 전역 음성. 이 플로우의 모든 멘트를 이 목소리가 읽습니다. 생략하면 기본(무료) 음성입니다.\n`clawops`(ClawOps 기본 음성)는 무료이고 `cartesia`·`elevenlabs`는 유료입니다. 다른 조직이 등록한 복제 음성 id는 403(`call_flow_voice_forbidden`)으로 거절합니다.",
+        "description": "플로우 전역 음성. 이 플로우의 모든 멘트를 이 목소리가 읽습니다. 생략하면 기본(무료) 음성입니다.\n`clawops`(ClawOps 기본 음성)는 무료이고 `cartesia`·`elevenlabs`·`google`은 유료입니다. 다른 조직이 등록한 복제 음성 id는 403(`call_flow_voice_forbidden`)으로 거절합니다.",
         "required": [
           "provider"
         ],
@@ -17626,14 +17626,15 @@
             "enum": [
               "clawops",
               "cartesia",
-              "elevenlabs"
+              "elevenlabs",
+              "google"
             ],
             "description": "TTS 공급자",
             "example": "clawops"
           },
           "voiceId": {
             "type": "string",
-            "description": "유료 공급자의 음성 id (cartesia=카탈로그 UUID · elevenlabs=20자 영숫자)",
+            "description": "유료 공급자의 음성 id (cartesia=카탈로그 UUID · elevenlabs=20자 영숫자 · google=Chirp 3 HD 음성명, 예 `ko-KR-Chirp3-HD-Aoede`)",
             "example": "794f9389-aac1-45b6-b726-9d9369183238"
           },
           "model": {
