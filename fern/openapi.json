@@ -15466,6 +15466,44 @@
                 "description": "생략하면 에이전트 언어(configuration.language)를 따릅니다."
               }
             }
+          },
+          {
+            "title": "Google",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "model",
+              "voice"
+            ],
+            "properties": {
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "google"
+                ]
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "chirp_3"
+                ]
+              },
+              "voice": {
+                "type": "string",
+                "description": "Chirp 3 HD 음성명입니다(예 `ko-KR-Chirp3-HD-Aoede`).",
+                "pattern": "^[a-z]{2,3}-[A-Z]{2}-Chirp3-HD-[A-Za-z]+$"
+              },
+              "language": {
+                "type": "string",
+                "description": "생략하면 에이전트 언어(configuration.language)를 따릅니다."
+              },
+              "speed": {
+                "type": "number",
+                "minimum": 0.6,
+                "maximum": 1.5
+              }
+            }
           }
         ]
       },
@@ -16145,18 +16183,20 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "configuration.tts.voice에 사용할 Cartesia voice UUID"
+            "description": "configuration.tts.voice에 사용할 음성 id(Cartesia=voice UUID · Google=Chirp 3 HD 음성명)"
           },
           "provider": {
             "type": "string",
             "enum": [
-              "cartesia"
+              "cartesia",
+              "google"
             ]
           },
           "model": {
             "type": "string",
             "enum": [
-              "sonic-3.5"
+              "sonic-3.5",
+              "chirp_3"
             ]
           },
           "name": {
